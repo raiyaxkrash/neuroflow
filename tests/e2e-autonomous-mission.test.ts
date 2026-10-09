@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { FastifyInstance } from 'fastify';
 import { buildServer } from '../apps/api/src/server.js';
 import {
-  initDatabase,
+  runMigrations,
   getDatabase,
   users,
   missions,
@@ -17,7 +17,8 @@ describe('E2E Autonomous Mission Lifecycle & Second Brain Integration', () => {
   let testUserId: string;
 
   beforeAll(async () => {
-    await initDatabase();
+    process.env.NODE_ENV = 'test';
+    await runMigrations();
     server = await buildServer();
     await server.ready();
 
@@ -26,6 +27,7 @@ describe('E2E Autonomous Mission Lifecycle & Second Brain Integration', () => {
     const [user] = await db
       .insert(users)
       .values({
+        name: 'E2E Owner',
         email: testEmail,
         passwordHash: 'hashed_password',
         role: 'owner',
@@ -142,6 +144,6 @@ describe('E2E Autonomous Mission Lifecycle & Second Brain Integration', () => {
 
     expect(missionDoc).toBeDefined();
     expect(missionDoc?.title).toContain('Исследование автономных агентов 2026');
-    expect(missionDoc?.content).toContain('Отчет по автономной миссии');
+    expect((missionDoc?.metadata as any)?.content).toContain('Отчет по автономной миссии');
   });
 });

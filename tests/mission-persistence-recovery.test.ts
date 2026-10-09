@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import {
-  initDatabase,
+  runMigrations,
   getDatabase,
   users,
   missions,
@@ -18,12 +18,14 @@ describe('Mission Persistence & Recovery', () => {
   let userId: string;
 
   beforeAll(async () => {
-    await initDatabase();
+    process.env.NODE_ENV = 'test';
+    await runMigrations();
     const db = getDatabase();
 
     const [u] = await db
       .insert(users)
       .values({
+        name: 'Persistence Owner',
         email: `persistence-tester-${Date.now()}@neuroflow.local`,
         passwordHash: 'test-hash',
         role: 'owner',

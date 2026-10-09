@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import {
   getDatabase,
   knowledgeDocuments,
@@ -92,9 +93,9 @@ export class MissionMemory {
         .values({
           userId: params.userId,
           name: 'Autonomous Missions Archive',
-          sourceType: 'custom_text',
-          syncStatus: 'synced',
-          totalDocuments: 1,
+          type: 'agent_output',
+          status: 'indexed',
+          itemCount: 1,
         })
         .returning({ id: knowledgeSources.id });
       sourceId = newSource.id;
@@ -114,17 +115,23 @@ ${JSON.stringify(params.artifacts, null, 2)}
 \`\`\`
 `;
 
+    const contentHash = createHash('sha256').update(content).digest('hex');
+
     const [doc] = await db
       .insert(knowledgeDocuments)
       .values({
         sourceId,
+        userId: params.userId,
         title: `Результат миссии: ${params.missionTitle}`,
-        content,
-        fileType: 'markdown',
-        status: 'completed',
+        uri: `mission://${params.missionId}`,
+        mimeType: 'text/markdown',
+        byteSize: Buffer.byteLength(content, 'utf8'),
+        contentHash,
+        status: 'indexed',
         metadata: {
           missionId: params.missionId,
           type: 'mission_export',
+          content,
         },
       })
       .returning({ id: knowledgeDocuments.id });

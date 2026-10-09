@@ -19,6 +19,7 @@ import {
   RefreshCw,
   Plus,
 } from 'lucide-react';
+import { Sidebar } from '@/components/layout/sidebar';
 
 interface MissionItem {
   id: string;
@@ -209,9 +210,11 @@ export default function MissionsPage() {
   const waitingApprovalTask = tasks.find((t) => t.status === 'waiting_for_approval');
 
   return (
-    <div className="flex-1 flex flex-col h-screen overflow-hidden bg-[#0D0F17] text-slate-200">
-      {/* Шапка страницы */}
-      <header className="h-16 border-b border-white/10 px-6 flex items-center justify-between shrink-0 bg-[#12141F]">
+    <div className="flex h-screen w-screen overflow-hidden bg-[#090A0F]">
+      <Sidebar />
+      <div className="flex-1 flex flex-col h-screen overflow-hidden bg-[#0D0F17] text-slate-200">
+        {/* Шапка страницы */}
+        <header className="h-16 border-b border-white/10 px-6 flex items-center justify-between shrink-0 bg-[#12141F]">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-purple-600/20 border border-purple-500/30 flex items-center justify-center text-purple-400">
             <Target className="w-5 h-5" />
@@ -740,6 +743,7 @@ export default function MissionsPage() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }
