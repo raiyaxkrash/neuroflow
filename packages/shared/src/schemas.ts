@@ -211,3 +211,102 @@ export const AIDebugRequestSchema = z.object({
   providerId: z.string().optional(),
 });
 
+// Phase 3: Multi-Agent Node Parameters Schemas
+export const AIAgentParametersSchema = z.object({
+  agentName: z.string().default('Agent'),
+  roleDescription: z.string().default('Autonomous problem-solving agent'),
+  systemInstructions: z.string().default('You are a specialized agent. Think step by step and use tools when needed.'),
+  userPrompt: z.string().default('Process task: {{input}}'),
+  providerId: z.string().optional(),
+  model: z.string().default('default'),
+  temperature: z.number().min(0).max(2).default(0.5),
+  allowedTools: z.array(z.string()).default([]), // список toolId или 'mcp:serverId:toolName'
+  memoryScope: z.enum(['conversation', 'execution', 'persistent', 'workspace', 'none']).default('conversation'),
+  maxIterations: z.number().int().min(1).max(30).default(10),
+  maxToolCalls: z.number().int().min(0).max(50).default(20),
+  timeoutMs: z.number().int().min(1000).max(300000).default(60000),
+  tokenBudget: z.number().int().min(100).max(128000).default(8192),
+});
+
+export const AgentSupervisorParametersSchema = z.object({
+  supervisorName: z.string().default('Supervisor'),
+  strategy: z.enum(['hierarchical', 'sequential', 'parallel', 'router']).default('hierarchical'),
+  systemInstructions: z.string().default('You are a team supervisor. Deconstruct user tasks, delegate to specialized worker agents, and synthesize final answers.'),
+  userGoal: z.string().default('Coordinate team to solve: {{input}}'),
+  workerAgentIds: z.array(z.string()).default([]),
+  providerId: z.string().optional(),
+  model: z.string().default('default'),
+  maxRounds: z.number().int().min(1).max(20).default(5),
+  timeoutMs: z.number().int().min(5000).max(600000).default(120000),
+});
+
+export const AgentHandoffParametersSchema = z.object({
+  targetAgentId: z.string().default(''),
+  handoffReason: z.string().default('Delegate subtask to specialized agent'),
+  contextTransferKeys: z.array(z.string()).default([]),
+  maxHandoffDepth: z.number().int().min(1).max(10).default(5),
+});
+
+export const AgentMemoryParametersSchema = z.object({
+  operation: z.enum(['read', 'write', 'search', 'delete', 'clear']).default('read'),
+  scope: z.enum(['conversation', 'execution', 'persistent', 'workspace']).default('persistent'),
+  key: z.string().optional().default(''),
+  value: z.string().optional().default(''),
+  searchQuery: z.string().optional().default(''),
+  limit: z.number().int().min(1).max(50).default(5),
+  ttlSeconds: z.number().int().min(0).optional(),
+});
+
+export const ToolExecutorParametersSchema = z.object({
+  toolSource: z.enum(['mcp', 'node', 'rest', 'builtin']).default('builtin'),
+  serverId: z.string().optional(),
+  toolName: z.string().min(1),
+  arguments: z.record(z.any()).default({}),
+  requiresApproval: z.boolean().default(false),
+  timeoutMs: z.number().int().min(1000).max(120000).default(30000),
+});
+
+export const HumanApprovalParametersSchema = z.object({
+  actionTitle: z.string().default('Требуется подтверждение действия'),
+  actionDescription: z.string().default('Агент запрашивает разрешение на выполнение чувствительной операции.'),
+  consequences: z.string().default('Внешнее действие будет выполнено от вашего имени.'),
+  riskLevel: z.enum(['low', 'medium', 'high', 'critical']).default('medium'),
+  timeoutMinutes: z.number().int().min(1).max(1440).default(60),
+});
+
+export const MCPToolParametersSchema = z.object({
+  serverId: z.string().min(1),
+  toolName: z.string().min(1),
+  arguments: z.record(z.any()).default({}),
+  timeoutMs: z.number().int().min(1000).max(120000).default(30000),
+});
+
+// Phase 3: MCP Server API Schemas
+export const CreateMCPServerSchema = z.object({
+  name: z.string().min(2).max(100),
+  description: z.string().max(500).optional(),
+  transport: z.enum(['http', 'sse', 'stdio']),
+  serverUrl: z.string().url().optional(),
+  command: z.string().optional(),
+  args: z.array(z.string()).optional(),
+  env: z.record(z.string()).optional(),
+  authType: z.enum(['none', 'bearer', 'api-key-header', 'custom-headers']).default('none'),
+  apiKey: z.string().optional(),
+  customHeaders: z.record(z.string()).optional(),
+  timeoutMs: z.number().int().min(1000).max(120000).default(30000),
+  isEnabled: z.boolean().default(true),
+});
+
+export const UpdateMCPServerSchema = CreateMCPServerSchema.partial();
+
+export const CallMCPToolSchema = z.object({
+  toolName: z.string().min(1),
+  arguments: z.record(z.any()).default({}),
+});
+
+export const ReviewApprovalSchema = z.object({
+  decision: z.enum(['approved', 'rejected']),
+  reason: z.string().max(500).optional(),
+});
+
+

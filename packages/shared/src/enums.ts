@@ -1,6 +1,7 @@
 export enum ExecutionStatus {
   PENDING = 'pending',
   RUNNING = 'running',
+  WAITING_FOR_APPROVAL = 'waiting_for_approval',
   SUCCESS = 'success',
   FAILED = 'failed',
   CANCELLED = 'cancelled',
@@ -10,6 +11,7 @@ export enum ExecutionStatus {
 export enum NodeExecutionStatus {
   PENDING = 'pending',
   RUNNING = 'running',
+  WAITING_FOR_APPROVAL = 'waiting_for_approval',
   SUCCESS = 'success',
   FAILED = 'failed',
   SKIPPED = 'skipped',
@@ -29,6 +31,7 @@ export enum NodeCategory {
   DATA = 'data',
   UTILITY = 'utility',
   AI = 'ai',
+  AGENT = 'agent',
 }
 
 export enum HttpMethod {

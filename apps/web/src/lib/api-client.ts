@@ -88,4 +88,30 @@ export const api = {
     const payload = typeof data === 'string' ? { executionId: data } : data;
     return fetchApi<any>('/api/ai/debug', { method: 'POST', body: JSON.stringify(payload) });
   },
+
+  // MCP Servers & Tools (Phase 3)
+  getMCPServers: () => fetchApi<any[]>('/api/mcp/servers'),
+  createMCPServer: (data: any) =>
+    fetchApi<any>('/api/mcp/servers', { method: 'POST', body: JSON.stringify(data) }),
+  deleteMCPServer: (id: string) =>
+    fetchApi<any>(`/api/mcp/servers/${id}`, { method: 'DELETE' }),
+  testMCPServer: (id: string) =>
+    fetchApi<any>(`/api/mcp/servers/${id}/test`, { method: 'POST' }),
+  callMCPTool: (serverId: string, data: { toolName: string; arguments?: Record<string, any> }) =>
+    fetchApi<any>(`/api/mcp/servers/${serverId}/tools/call`, { method: 'POST', body: JSON.stringify(data) }),
+
+  // Human Approvals (Phase 3)
+  getApprovals: () => fetchApi<any[]>('/api/approvals'),
+  reviewApproval: (id: string, decision: 'approved' | 'rejected', reason?: string) =>
+    fetchApi<any>(`/api/approvals/${id}/review`, {
+      method: 'POST',
+      body: JSON.stringify({ decision, reason }),
+    }),
+
+  // Agent Memory (Phase 3)
+  getMemories: (scope: string = 'user', query?: string) =>
+    fetchApi<{ items: any[] }>(`/api/memories?scope=${scope}${query ? `&query=${encodeURIComponent(query)}` : ''}`),
+  setMemory: (data: { scope: string; key: string; value: any; ttlSeconds?: number }) =>
+    fetchApi<any>('/api/memories', { method: 'POST', body: JSON.stringify(data) }),
 };
+

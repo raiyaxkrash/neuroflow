@@ -26,10 +26,75 @@ import { api } from '@/lib/api-client';
 
 export default function SettingsPage() {
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<'ai' | 'system'>('ai');
+  const [activeTab, setActiveTab] = useState<'ai' | 'mcp' | 'system'>('ai');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isMCPModalOpen, setIsMCPModalOpen] = useState(false);
   const [testingId, setTestingId] = useState<string | null>(null);
   const [testResults, setTestResults] = useState<Record<string, { success: boolean; message: string; latencyMs?: number }>>({});
+
+  const [mcpFormData, setMcpFormData] = useState({
+    name: '',
+    description: '',
+    transport: 'stdio' as 'stdio' | 'sse' | 'http',
+    serverUrl: '',
+    command: 'node',
+    args: '',
+    env: '',
+    authType: 'none' as 'none' | 'bearer' | 'api-key-header',
+    apiKey: '',
+  });
+
+  const resetMCPForm = () => {
+    setMcpFormData({
+      name: '',
+      description: '',
+      transport: 'stdio',
+      serverUrl: '',
+      command: 'node',
+      args: '',
+      env: '',
+      authType: 'none',
+      apiKey: '',
+    });
+  };
+
+  const { data: mcpServers = [], isLoading: isMCPLoading } = useQuery<any[]>({
+    queryKey: ['mcp-servers'],
+    queryFn: async () => {
+      const res = await api.getMCPServers();
+      return (res || []) as any[];
+    },
+  });
+
+  const createMCPMutation = useMutation({
+    mutationFn: (data: any) => api.createMCPServer(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['mcp-servers'] });
+      setIsMCPModalOpen(false);
+      resetMCPForm();
+    },
+    onError: (err: any) => {
+      alert(`Ошибка создания MCP сервера: ${err.message}`);
+    },
+  });
+
+  const deleteMCPMutation = useMutation({
+    mutationFn: (id: string) => api.deleteMCPServer(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['mcp-servers'] });
+    },
+  });
+
+  const testMCPMutation = useMutation({
+    mutationFn: (id: string) => api.testMCPServer(id),
+    onSuccess: (res: any) => {
+      queryClient.invalidateQueries({ queryKey: ['mcp-servers'] });
+      alert(res.message || 'Подключение успешно проверено!');
+    },
+    onError: (err: any) => {
+      alert(`Ошибка подключения к MCP: ${err.message}`);
+    },
+  });
 
   // Состояние формы добавления провайдера
   const [formData, setFormData] = useState({
@@ -217,6 +282,19 @@ export default function SettingsPage() {
               <span>Добавить AI Провайдер</span>
             </button>
           )}
+
+          {activeTab === 'mcp' && (
+            <button
+              onClick={() => {
+                resetMCPForm();
+                setIsMCPModalOpen(true);
+              }}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-lg shadow-indigo-600/25 transition-all cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Добавить MCP Сервер</span>
+            </button>
+          )}
         </header>
 
         {/* Навигация по вкладкам */}
@@ -231,6 +309,18 @@ export default function SettingsPage() {
           >
             <Sparkles className="w-4 h-4 text-purple-400" />
             <span>AI Провайдеры (Credentials)</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('mcp')}
+            className={`flex items-center gap-2 px-4 py-3 text-xs font-medium border-b-2 transition-colors ${
+              activeTab === 'mcp'
+                ? 'border-purple-500 text-purple-300'
+                : 'border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Server className="w-4 h-4 text-indigo-400" />
+            <span>MCP Серверы (Integrations)</span>
           </button>
 
           <button
@@ -368,6 +458,122 @@ export default function SettingsPage() {
                               }
                             }}
                             className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition-colors"
+                            title="Удалить"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ВКЛАДКА: MCP СЕРВЕРЫ */}
+          {activeTab === 'mcp' && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-sm font-semibold text-slate-200">Подключенные MCP Серверы (Model Context Protocol)</h2>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Стандарт Anthropic/Linux Foundation для универсального подключения инструментов, ресурсов и промптов (stdio, SSE, HTTP).
+                  </p>
+                </div>
+              </div>
+
+              {isMCPLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-6 h-6 animate-spin text-indigo-400" />
+                </div>
+              ) : mcpServers.length === 0 ? (
+                <div className="p-8 text-center rounded-2xl border border-dashed border-white/10 bg-[#12141F]">
+                  <Server className="w-8 h-8 text-slate-500 mx-auto mb-2.5" />
+                  <p className="text-sm font-medium text-slate-300">MCP Серверы пока не подключены</p>
+                  <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+                    Добавьте локальный (stdio через npx/python/uvx/docker) или удаленный (SSE/HTTP) сервер для расширения возможностей AI-агентов.
+                  </p>
+                  <button
+                    onClick={() => {
+                      resetMCPForm();
+                      setIsMCPModalOpen(true);
+                    }}
+                    className="mt-4 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white shadow-lg shadow-indigo-600/20 cursor-pointer"
+                  >
+                    Подключить первый MCP сервер
+                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-3.5">
+                  {mcpServers.map((server) => {
+                    const isTesting = testMCPMutation.isPending && (testMCPMutation.variables as any) === server.id;
+                    const toolsCount = Array.isArray(server.discoveredTools) ? server.discoveredTools.length : 0;
+
+                    return (
+                      <div
+                        key={server.id}
+                        className="p-5 rounded-2xl bg-[#12141F] border border-white/5 hover:border-white/10 transition-all flex items-start justify-between gap-4"
+                      >
+                        <div className="space-y-2.5 min-w-0 flex-1">
+                          <div className="flex items-center gap-2.5 flex-wrap">
+                            <span className="text-sm font-semibold text-slate-100">{server.name}</span>
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-mono uppercase bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                              {server.transport}
+                            </span>
+                            <span className="px-2 py-0.5 rounded-full text-[10px] bg-white/5 text-slate-300">
+                              {toolsCount} инструментов
+                            </span>
+                          </div>
+
+                          {server.description && (
+                            <p className="text-xs text-slate-400">{server.description}</p>
+                          )}
+
+                          <div className="flex items-center gap-4 text-xs font-mono text-slate-400">
+                            {server.transport === 'stdio' ? (
+                              <span>Команда: <strong className="text-slate-200">{server.command} {(server.args || []).join(' ')}</strong></span>
+                            ) : (
+                              <span>URL: <strong className="text-slate-200">{server.serverUrl}</strong></span>
+                            )}
+                          </div>
+
+                          {toolsCount > 0 && (
+                            <div className="pt-2 border-t border-white/5 flex flex-wrap gap-1.5">
+                              {server.discoveredTools.map((t: any) => (
+                                <span
+                                  key={t.name}
+                                  title={t.description || t.name}
+                                  className="px-2 py-0.5 rounded bg-[#181B2B] border border-white/5 text-[10px] font-mono text-cyan-300"
+                                >
+                                  ⚡ {t.name}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            onClick={() => testMCPMutation.mutate(server.id)}
+                            disabled={isTesting}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#181B2B] hover:bg-white/10 text-slate-300 text-xs font-medium border border-white/5 transition-colors cursor-pointer"
+                          >
+                            {isTesting ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-400" />
+                            ) : (
+                              <RefreshCw className="w-3.5 h-3.5 text-indigo-400" />
+                            )}
+                            <span>{isTesting ? 'Проверка...' : 'Обновить инструменты'}</span>
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              if (confirm(`Удалить MCP сервер «${server.name}»?`)) {
+                                deleteMCPMutation.mutate(server.id);
+                              }
+                            }}
+                            className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition-colors cursor-pointer"
                             title="Удалить"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -608,6 +814,161 @@ export default function SettingsPage() {
                   className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white text-xs font-semibold shadow-lg shadow-purple-600/20"
                 >
                   {createMutation.isPending ? 'Сохранение...' : 'Сохранить провайдер'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* МОДАЛЬНОЕ ОКНО СОЗДАНИЯ MCP СЕРВЕРА */}
+      {isMCPModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="bg-[#12141F] border border-white/10 rounded-2xl w-full max-w-xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+            <div className="p-5 border-b border-white/5 flex items-center justify-between bg-gradient-to-r from-indigo-900/30 to-purple-900/20">
+              <div className="flex items-center gap-2.5">
+                <Server className="w-5 h-5 text-indigo-400" />
+                <h3 className="text-sm font-semibold text-white">Добавить MCP Сервер</h3>
+              </div>
+              <button onClick={() => setIsMCPModalOpen(false)} className="text-slate-400 hover:text-white cursor-pointer">
+                ✕
+              </button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                createMCPMutation.mutate({
+                  name: mcpFormData.name,
+                  description: mcpFormData.description || undefined,
+                  transport: mcpFormData.transport,
+                  command: mcpFormData.transport === 'stdio' ? mcpFormData.command : undefined,
+                  args: mcpFormData.transport === 'stdio' && mcpFormData.args ? mcpFormData.args.split(' ').map((s) => s.trim()).filter(Boolean) : undefined,
+                  serverUrl: mcpFormData.transport !== 'stdio' ? mcpFormData.serverUrl : undefined,
+                  authType: mcpFormData.authType,
+                  apiKey: mcpFormData.apiKey || undefined,
+                });
+              }}
+              className="p-6 overflow-y-auto space-y-4 flex-1"
+            >
+              <div>
+                <label className="text-xs font-medium text-slate-300 block mb-1">Название MCP Сервера:</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="GitHub MCP, Postgres DB, File System..."
+                  value={mcpFormData.name}
+                  onChange={(e) => setMcpFormData({ ...mcpFormData, name: e.target.value })}
+                  className="w-full bg-[#181B2B] text-xs text-slate-200 p-2.5 rounded-lg border border-white/5 focus:border-indigo-500/50 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-slate-300 block mb-1">Описание (опционально):</label>
+                <input
+                  type="text"
+                  placeholder="Доступ к репозиториям и issue трекеру"
+                  value={mcpFormData.description}
+                  onChange={(e) => setMcpFormData({ ...mcpFormData, description: e.target.value })}
+                  className="w-full bg-[#181B2B] text-xs text-slate-200 p-2.5 rounded-lg border border-white/5 focus:border-indigo-500/50 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-slate-300 block mb-1">Транспорт (Transport):</label>
+                <select
+                  value={mcpFormData.transport}
+                  onChange={(e) => setMcpFormData({ ...mcpFormData, transport: e.target.value as any })}
+                  className="w-full bg-[#181B2B] text-xs text-slate-200 p-2.5 rounded-lg border border-white/5 focus:border-indigo-500/50 outline-none"
+                >
+                  <option value="stdio">Stdio (Локальный процесс: node, npx, python, uvx, docker)</option>
+                  <option value="sse">SSE (Server-Sent Events по HTTP)</option>
+                  <option value="http">HTTP Remote Endpoint</option>
+                </select>
+              </div>
+
+              {mcpFormData.transport === 'stdio' ? (
+                <>
+                  <div>
+                    <label className="text-xs font-medium text-slate-300 block mb-1">Команда (Command):</label>
+                    <select
+                      value={mcpFormData.command}
+                      onChange={(e) => setMcpFormData({ ...mcpFormData, command: e.target.value })}
+                      className="w-full bg-[#181B2B] text-xs text-slate-200 p-2.5 rounded-lg border border-white/5 focus:border-indigo-500/50 outline-none"
+                    >
+                      <option value="npx">npx</option>
+                      <option value="node">node</option>
+                      <option value="python">python</option>
+                      <option value="python3">python3</option>
+                      <option value="uvx">uvx</option>
+                      <option value="docker">docker</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-slate-300 block mb-1">Аргументы (через пробел):</label>
+                    <input
+                      type="text"
+                      placeholder="-y @modelcontextprotocol/server-filesystem /path"
+                      value={mcpFormData.args}
+                      onChange={(e) => setMcpFormData({ ...mcpFormData, args: e.target.value })}
+                      className="w-full bg-[#181B2B] font-mono text-xs text-slate-200 p-2.5 rounded-lg border border-white/5 focus:border-indigo-500/50 outline-none"
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <label className="text-xs font-medium text-slate-300 block mb-1">Server URL (с SSRF-проверкой):</label>
+                    <input
+                      type="url"
+                      required
+                      placeholder="https://mcp.example.com/sse"
+                      value={mcpFormData.serverUrl}
+                      onChange={(e) => setMcpFormData({ ...mcpFormData, serverUrl: e.target.value })}
+                      className="w-full bg-[#181B2B] font-mono text-xs text-slate-200 p-2.5 rounded-lg border border-white/5 focus:border-indigo-500/50 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-slate-300 block mb-1">Авторизация:</label>
+                    <select
+                      value={mcpFormData.authType}
+                      onChange={(e) => setMcpFormData({ ...mcpFormData, authType: e.target.value as any })}
+                      className="w-full bg-[#181B2B] text-xs text-slate-200 p-2.5 rounded-lg border border-white/5 focus:border-indigo-500/50 outline-none"
+                    >
+                      <option value="none">Без авторизации</option>
+                      <option value="bearer">Bearer Token</option>
+                      <option value="api-key-header">X-API-Key Header</option>
+                    </select>
+                  </div>
+                  {mcpFormData.authType !== 'none' && (
+                    <div>
+                      <label className="text-xs font-medium text-slate-300 block mb-1">API Ключ / Токен:</label>
+                      <input
+                        type="password"
+                        placeholder="Ключ шифруется AES-256-GCM"
+                        value={mcpFormData.apiKey}
+                        onChange={(e) => setMcpFormData({ ...mcpFormData, apiKey: e.target.value })}
+                        className="w-full bg-[#181B2B] font-mono text-xs text-slate-200 p-2.5 rounded-lg border border-white/5 focus:border-indigo-500/50 outline-none"
+                      />
+                    </div>
+                  )}
+                </>
+              )}
+
+              <div className="p-4 border-t border-white/5 flex items-center justify-end gap-2 -mx-6 -mb-6 mt-6 bg-[#0D0E15]">
+                <button
+                  type="button"
+                  onClick={() => setIsMCPModalOpen(false)}
+                  className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-medium text-slate-300 cursor-pointer"
+                >
+                  Отмена
+                </button>
+                <button
+                  type="submit"
+                  disabled={createMCPMutation.isPending}
+                  className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-xs font-semibold shadow-lg shadow-indigo-600/20 cursor-pointer"
+                >
+                  {createMCPMutation.isPending ? 'Подключение...' : 'Подключить сервер'}
                 </button>
               </div>
             </form>

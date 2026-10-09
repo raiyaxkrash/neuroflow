@@ -12,7 +12,7 @@ import {
 } from '@xyflow/react';
 
 export interface NodeExecState {
-  status: 'pending' | 'running' | 'success' | 'failed' | 'skipped';
+  status: 'pending' | 'running' | 'success' | 'failed' | 'skipped' | 'waiting_for_approval';
   durationMs?: number;
   output?: any;
   error?: string;

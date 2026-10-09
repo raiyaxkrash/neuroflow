@@ -64,6 +64,7 @@ export const executions = pgTable('executions', {
     enum: [
       ExecutionStatus.PENDING,
       ExecutionStatus.RUNNING,
+      ExecutionStatus.WAITING_FOR_APPROVAL,
       ExecutionStatus.SUCCESS,
       ExecutionStatus.FAILED,
       ExecutionStatus.CANCELLED,
@@ -101,6 +102,7 @@ export const nodeExecutions = pgTable('node_executions', {
     enum: [
       NodeExecutionStatus.PENDING,
       NodeExecutionStatus.RUNNING,
+      NodeExecutionStatus.WAITING_FOR_APPROVAL,
       NodeExecutionStatus.SUCCESS,
       NodeExecutionStatus.FAILED,
       NodeExecutionStatus.SKIPPED,
@@ -163,10 +165,97 @@ export const aiProviders = pgTable('ai_providers', {
   index('ai_providers_user_id_idx').on(table.userId),
 ]);
 
+// Таблица MCP серверов (Phase 3)
+export const mcpServers = pgTable('mcp_servers', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  name: text('name').notNull(),
+  description: text('description'),
+  transport: text('transport', { enum: ['stdio', 'sse', 'http'] }).notNull(),
+  serverUrl: text('server_url'),
+  command: text('command'),
+  args: jsonb('args').default([]).notNull(),
+  envEncrypted: text('env_encrypted'),
+  authType: text('auth_type', { enum: ['none', 'bearer', 'basic', 'custom_header'] }).default('none').notNull(),
+  apiKeyEncrypted: text('api_key_encrypted'),
+  headersEncrypted: text('headers_encrypted'),
+  capabilities: jsonb('capabilities').default({}).notNull(),
+  discoveredTools: jsonb('discovered_tools').default([]).notNull(),
+  discoveredResources: jsonb('discovered_resources').default([]).notNull(),
+  discoveredPrompts: jsonb('discovered_prompts').default([]).notNull(),
+  isEnabled: boolean('is_enabled').default(true).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index('mcp_servers_user_id_idx').on(table.userId),
+]);
+
+// Таблица запросов на подтверждение действий человека (Human-in-the-Loop)
+export const approvals = pgTable('approvals', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  executionId: uuid('execution_id').references(() => executions.id, { onDelete: 'cascade' }).notNull(),
+  nodeId: text('node_id').notNull(),
+  agentId: text('agent_id'),
+  toolName: text('tool_name').notNull(),
+  toolArguments: jsonb('tool_arguments').default({}).notNull(),
+  consequences: text('consequences'),
+  actionFingerprint: text('action_fingerprint').notNull(),
+  status: text('status', { enum: ['pending', 'approved', 'rejected'] }).default('pending').notNull(),
+  reviewedBy: uuid('reviewed_by').references(() => users.id, { onDelete: 'set null' }),
+  reviewedAt: timestamp('reviewed_at', { withTimezone: true }),
+  rejectionReason: text('rejection_reason'),
+  expiresAt: timestamp('expires_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index('approvals_execution_id_idx').on(table.executionId),
+  index('approvals_status_idx').on(table.status),
+]);
+
+// Таблица долговременной и контекстной памяти агентов (Agent Memory)
+export const agentMemories = pgTable('agent_memories', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  agentId: text('agent_id'),
+  workflowId: uuid('workflow_id').references(() => workflows.id, { onDelete: 'cascade' }),
+  executionId: uuid('execution_id').references(() => executions.id, { onDelete: 'cascade' }),
+  scope: text('scope', { enum: ['execution', 'workflow', 'agent', 'user'] }).notNull(),
+  key: text('key').notNull(),
+  value: jsonb('value').notNull(),
+  metadata: jsonb('metadata').default({}).notNull(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index('agent_memories_user_id_idx').on(table.userId),
+  index('agent_memories_scope_key_idx').on(table.scope, table.key),
+  index('agent_memories_agent_id_idx').on(table.agentId),
+]);
+
+// Таблица подробных логов рассуждений и выполнения агентов (ReAct Tracing)
+export const agentExecutionLogs = pgTable('agent_execution_logs', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  executionId: uuid('execution_id').references(() => executions.id, { onDelete: 'cascade' }).notNull(),
+  nodeId: text('node_id').notNull(),
+  agentId: text('agent_id'),
+  eventType: text('event_type').notNull(),
+  payload: jsonb('payload').default({}).notNull(),
+  tokensUsed: integer('tokens_used').default(0).notNull(),
+  costEstimate: integer('cost_estimate').default(0).notNull(),
+  durationMs: integer('duration_ms'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index('agent_execution_logs_exec_id_idx').on(table.executionId),
+  index('agent_execution_logs_node_id_idx').on(table.nodeId),
+]);
+
 // Связи Drizzle Relations
 export const usersRelations = relations(users, ({ many }) => ({
   workflows: many(workflows),
   credentials: many(credentials),
+  aiProviders: many(aiProviders),
+  mcpServers: many(mcpServers),
+  agentMemories: many(agentMemories),
 }));
 
 export const workflowsRelations = relations(workflows, ({ one, many }) => ({
@@ -176,6 +265,7 @@ export const workflowsRelations = relations(workflows, ({ one, many }) => ({
   }),
   versions: many(workflowVersions),
   executions: many(executions),
+  agentMemories: many(agentMemories),
 }));
 
 export const workflowVersionsRelations = relations(workflowVersions, ({ one }) => ({
@@ -191,6 +281,8 @@ export const executionsRelations = relations(executions, ({ one, many }) => ({
     references: [workflows.id],
   }),
   nodeExecutions: many(nodeExecutions),
+  approvals: many(approvals),
+  agentExecutionLogs: many(agentExecutionLogs),
 }));
 
 export const nodeExecutionsRelations = relations(nodeExecutions, ({ one }) => ({
@@ -199,3 +291,44 @@ export const nodeExecutionsRelations = relations(nodeExecutions, ({ one }) => ({
     references: [executions.id],
   }),
 }));
+
+export const approvalsRelations = relations(approvals, ({ one }) => ({
+  execution: one(executions, {
+    fields: [approvals.executionId],
+    references: [executions.id],
+  }),
+  reviewer: one(users, {
+    fields: [approvals.reviewedBy],
+    references: [users.id],
+  }),
+}));
+
+export const mcpServersRelations = relations(mcpServers, ({ one }) => ({
+  user: one(users, {
+    fields: [mcpServers.userId],
+    references: [users.id],
+  }),
+}));
+
+export const agentMemoriesRelations = relations(agentMemories, ({ one }) => ({
+  user: one(users, {
+    fields: [agentMemories.userId],
+    references: [users.id],
+  }),
+  workflow: one(workflows, {
+    fields: [agentMemories.workflowId],
+    references: [workflows.id],
+  }),
+  execution: one(executions, {
+    fields: [agentMemories.executionId],
+    references: [executions.id],
+  }),
+}));
+
+export const agentExecutionLogsRelations = relations(agentExecutionLogs, ({ one }) => ({
+  execution: one(executions, {
+    fields: [agentExecutionLogs.executionId],
+    references: [executions.id],
+  }),
+}));
+

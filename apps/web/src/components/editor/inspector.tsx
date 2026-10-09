@@ -620,6 +620,357 @@ export function Inspector() {
                 </div>
               </div>
             )}
+
+            {/* AI AGENT */}
+            {nodeType === 'ai-agent' && (
+              <div className="space-y-3.5">
+                <div>
+                  <label className="text-xs font-medium text-slate-300 block mb-1">
+                    Имя агента:
+                  </label>
+                  <input
+                    type="text"
+                    value={params.agentName || 'Agent'}
+                    onChange={(e) => updateCurrentNodeParams({ agentName: e.target.value })}
+                    className="w-full bg-[#181B2B] text-xs text-slate-200 p-2 rounded-lg border border-white/5 focus:border-cyan-500/50 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-medium text-slate-300 block mb-1">
+                    Роль и специализация (Role Description):
+                  </label>
+                  <input
+                    type="text"
+                    value={params.roleDescription || 'Autonomous problem-solving agent'}
+                    onChange={(e) => updateCurrentNodeParams({ roleDescription: e.target.value })}
+                    className="w-full bg-[#181B2B] text-xs text-slate-200 p-2 rounded-lg border border-white/5 focus:border-cyan-500/50 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-medium text-slate-300 block mb-1">
+                    Системные инструкции (ReAct Instructions):
+                  </label>
+                  <textarea
+                    rows={4}
+                    value={params.systemInstructions || 'You are a specialized agent. Think step by step and use tools when needed.'}
+                    onChange={(e) => updateCurrentNodeParams({ systemInstructions: e.target.value })}
+                    className="w-full bg-[#181B2B] text-xs text-slate-200 p-2.5 rounded-lg border border-white/5 focus:border-cyan-500/50 outline-none font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-medium text-slate-300 block mb-1">
+                    Разрешенные инструменты (через запятую или * для всех):
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="calculator, web_fetch, mcp:* или *"
+                    value={Array.isArray(params.allowedTools) ? params.allowedTools.join(', ') : params.allowedTools || '*'}
+                    onChange={(e) =>
+                      updateCurrentNodeParams({
+                        allowedTools: e.target.value.split(',').map((s) => s.trim()).filter(Boolean),
+                      })
+                    }
+                    className="w-full bg-[#181B2B] font-mono text-xs text-slate-200 p-2 rounded-lg border border-white/5 focus:border-cyan-500/50 outline-none"
+                  />
+                  <p className="text-[10px] text-slate-500 mt-1">
+                    Доступны встроенные: calculator, web_fetch, json_processor; и инструменты MCP.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs font-medium text-slate-300 block mb-1">
+                      Макс. итераций:
+                    </label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={30}
+                      value={params.maxIterations || 10}
+                      onChange={(e) => updateCurrentNodeParams({ maxIterations: Number(e.target.value) })}
+                      className="w-full bg-[#181B2B] text-xs text-slate-200 p-2 rounded-lg border border-white/5 focus:border-cyan-500/50 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-slate-300 block mb-1">
+                      Лимит вызовов:
+                    </label>
+                    <input
+                      type="number"
+                      min={0}
+                      max={50}
+                      value={params.maxToolCalls || 20}
+                      onChange={(e) => updateCurrentNodeParams({ maxToolCalls: Number(e.target.value) })}
+                      className="w-full bg-[#181B2B] text-xs text-slate-200 p-2 rounded-lg border border-white/5 focus:border-cyan-500/50 outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* AGENT SUPERVISOR */}
+            {nodeType === 'agent-supervisor' && (
+              <div className="space-y-3.5">
+                <div>
+                  <label className="text-xs font-medium text-slate-300 block mb-1">
+                    Имя супервизора:
+                  </label>
+                  <input
+                    type="text"
+                    value={params.supervisorName || 'Supervisor'}
+                    onChange={(e) => updateCurrentNodeParams({ supervisorName: e.target.value })}
+                    className="w-full bg-[#181B2B] text-xs text-slate-200 p-2 rounded-lg border border-white/5 focus:border-blue-500/50 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-medium text-slate-300 block mb-1">
+                    Стратегия оркестрации:
+                  </label>
+                  <select
+                    value={params.strategy || 'hierarchical'}
+                    onChange={(e) => updateCurrentNodeParams({ strategy: e.target.value })}
+                    className="w-full bg-[#181B2B] text-xs text-slate-200 p-2 rounded-lg border border-white/5 focus:border-blue-500/50 outline-none"
+                  >
+                    <option value="hierarchical">Иерархическая (Hierarchical)</option>
+                    <option value="sequential">Последовательная (Sequential)</option>
+                    <option value="parallel">Параллельная (Parallel)</option>
+                    <option value="router">Маршрутизатор (Router)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-medium text-slate-300 block mb-1">
+                    Инструкции супервизора:
+                  </label>
+                  <textarea
+                    rows={4}
+                    value={params.systemInstructions || 'You are a team supervisor. Deconstruct user tasks, delegate to specialized worker agents, and synthesize final answers.'}
+                    onChange={(e) => updateCurrentNodeParams({ systemInstructions: e.target.value })}
+                    className="w-full bg-[#181B2B] text-xs text-slate-200 p-2.5 rounded-lg border border-white/5 focus:border-blue-500/50 outline-none font-mono"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* AGENT HANDOFF */}
+            {nodeType === 'agent-handoff' && (
+              <div className="space-y-3.5">
+                <div>
+                  <label className="text-xs font-medium text-slate-300 block mb-1">
+                    Целевой агент (Target Agent ID):
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="ResearcherAgent"
+                    value={params.targetAgentId || ''}
+                    onChange={(e) => updateCurrentNodeParams({ targetAgentId: e.target.value })}
+                    className="w-full bg-[#181B2B] text-xs text-slate-200 p-2 rounded-lg border border-white/5 focus:border-amber-500/50 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-medium text-slate-300 block mb-1">
+                    Причина передачи (Reason):
+                  </label>
+                  <input
+                    type="text"
+                    value={params.handoffReason || 'Delegate subtask to specialized agent'}
+                    onChange={(e) => updateCurrentNodeParams({ handoffReason: e.target.value })}
+                    className="w-full bg-[#181B2B] text-xs text-slate-200 p-2 rounded-lg border border-white/5 focus:border-amber-500/50 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-medium text-slate-300 block mb-1">
+                    Максимальная глубина цепочки (защита от циклов):
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={10}
+                    value={params.maxHandoffDepth || 5}
+                    onChange={(e) => updateCurrentNodeParams({ maxHandoffDepth: Number(e.target.value) })}
+                    className="w-full bg-[#181B2B] text-xs text-slate-200 p-2 rounded-lg border border-white/5 focus:border-amber-500/50 outline-none"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* AGENT MEMORY */}
+            {nodeType === 'agent-memory' && (
+              <div className="space-y-3.5">
+                <div>
+                  <label className="text-xs font-medium text-slate-300 block mb-1">
+                    Операция:
+                  </label>
+                  <select
+                    value={params.operation || 'read'}
+                    onChange={(e) => updateCurrentNodeParams({ operation: e.target.value })}
+                    className="w-full bg-[#181B2B] text-xs text-slate-200 p-2 rounded-lg border border-white/5 focus:border-emerald-500/50 outline-none"
+                  >
+                    <option value="read">Чтение (Read)</option>
+                    <option value="write">Запись (Write)</option>
+                    <option value="search">Поиск (Search)</option>
+                    <option value="delete">Удаление (Delete)</option>
+                    <option value="clear">Очистка scope (Clear)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-medium text-slate-300 block mb-1">
+                    Область видимости (Scope):
+                  </label>
+                  <select
+                    value={params.scope || 'persistent'}
+                    onChange={(e) => updateCurrentNodeParams({ scope: e.target.value })}
+                    className="w-full bg-[#181B2B] text-xs text-slate-200 p-2 rounded-lg border border-white/5 focus:border-emerald-500/50 outline-none"
+                  >
+                    <option value="conversation">В рамках диалога (Conversation)</option>
+                    <option value="execution">В рамках запуска (Execution)</option>
+                    <option value="persistent">Долговременная память агента (Agent/Persistent)</option>
+                    <option value="workspace">Пользовательское пространство (Workspace)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-medium text-slate-300 block mb-1">
+                    Ключ (Key):
+                  </label>
+                  <input
+                    type="text"
+                    value={params.key || ''}
+                    onChange={(e) => updateCurrentNodeParams({ key: e.target.value })}
+                    className="w-full bg-[#181B2B] font-mono text-xs text-slate-200 p-2 rounded-lg border border-white/5 focus:border-emerald-500/50 outline-none"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* TOOL EXECUTOR */}
+            {nodeType === 'tool-executor' && (
+              <div className="space-y-3.5">
+                <div>
+                  <label className="text-xs font-medium text-slate-300 block mb-1">
+                    Имя инструмента:
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="calculator, web_fetch, mcp:server:tool"
+                    value={params.toolName || 'calculator'}
+                    onChange={(e) => updateCurrentNodeParams({ toolName: e.target.value })}
+                    className="w-full bg-[#181B2B] font-mono text-xs text-slate-200 p-2 rounded-lg border border-white/5 focus:border-pink-500/50 outline-none"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2 pt-1">
+                  <input
+                    type="checkbox"
+                    id="reqAppr"
+                    checked={!!params.requiresApproval}
+                    onChange={(e) => updateCurrentNodeParams({ requiresApproval: e.target.checked })}
+                    className="accent-purple-500"
+                  />
+                  <label htmlFor="reqAppr" className="text-xs text-slate-300 cursor-pointer">
+                    Требуется подтверждение человека (Human Approval)
+                  </label>
+                </div>
+              </div>
+            )}
+
+            {/* HUMAN APPROVAL */}
+            {nodeType === 'human-approval' && (
+              <div className="space-y-3.5">
+                <div>
+                  <label className="text-xs font-medium text-slate-300 block mb-1">
+                    Заголовок действия:
+                  </label>
+                  <input
+                    type="text"
+                    value={params.actionTitle || 'Требуется подтверждение действия'}
+                    onChange={(e) => updateCurrentNodeParams({ actionTitle: e.target.value })}
+                    className="w-full bg-[#181B2B] text-xs text-slate-200 p-2 rounded-lg border border-white/5 focus:border-rose-500/50 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-medium text-slate-300 block mb-1">
+                    Последствия (Consequences):
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={params.consequences || 'Внешнее действие будет выполнено от вашего имени.'}
+                    onChange={(e) => updateCurrentNodeParams({ consequences: e.target.value })}
+                    className="w-full bg-[#181B2B] text-xs text-slate-200 p-2 rounded-lg border border-white/5 focus:border-rose-500/50 outline-none"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs font-medium text-slate-300 block mb-1">
+                      Уровень риска:
+                    </label>
+                    <select
+                      value={params.riskLevel || 'medium'}
+                      onChange={(e) => updateCurrentNodeParams({ riskLevel: e.target.value })}
+                      className="w-full bg-[#181B2B] text-xs text-slate-200 p-2 rounded-lg border border-white/5 focus:border-rose-500/50 outline-none"
+                    >
+                      <option value="low">Низкий (Low)</option>
+                      <option value="medium">Средний (Medium)</option>
+                      <option value="high">Высокий (High)</option>
+                      <option value="critical">Критический (Critical)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-slate-300 block mb-1">
+                      Таймаут (минуты):
+                    </label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={1440}
+                      value={params.timeoutMinutes || 60}
+                      onChange={(e) => updateCurrentNodeParams({ timeoutMinutes: Number(e.target.value) })}
+                      className="w-full bg-[#181B2B] text-xs text-slate-200 p-2 rounded-lg border border-white/5 focus:border-rose-500/50 outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* MCP TOOL */}
+            {nodeType === 'mcp-tool' && (
+              <div className="space-y-3.5">
+                <div>
+                  <label className="text-xs font-medium text-slate-300 block mb-1">
+                    ID MCP Сервера:
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="UUID сервера из раздела MCP"
+                    value={params.serverId || ''}
+                    onChange={(e) => updateCurrentNodeParams({ serverId: e.target.value })}
+                    className="w-full bg-[#181B2B] font-mono text-xs text-slate-200 p-2 rounded-lg border border-white/5 focus:border-indigo-500/50 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-medium text-slate-300 block mb-1">
+                    Имя инструмента (Tool Name):
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="list_issues, run_query..."
+                    value={params.toolName || ''}
+                    onChange={(e) => updateCurrentNodeParams({ toolName: e.target.value })}
+                    className="w-full bg-[#181B2B] font-mono text-xs text-slate-200 p-2 rounded-lg border border-white/5 focus:border-indigo-500/50 outline-none"
+                  />
+                </div>
+              </div>
+            )}
           </div>
         )}
 

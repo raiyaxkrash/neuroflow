@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Activity,
   CheckCircle2,
@@ -13,12 +13,15 @@ import {
   FileCode,
   Sparkles,
   Shield,
+  ShieldAlert,
   Lightbulb,
+  Check,
 } from 'lucide-react';
 import { Sidebar } from '@/components/layout/sidebar';
 import { api } from '@/lib/api-client';
 
 export default function ExecutionsPage() {
+  const queryClient = useQueryClient();
   const [selectedExecutionId, setSelectedExecutionId] = useState<string | null>(null);
   const [isDebugLoading, setIsDebugLoading] = useState(false);
   const [debugAnalysis, setDebugAnalysis] = useState<any | null>(null);
@@ -27,6 +30,21 @@ export default function ExecutionsPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['executions'],
     queryFn: () => api.getExecutions(),
+  });
+
+  const { data: pendingApprovals = [] } = useQuery({
+    queryKey: ['approvals'],
+    queryFn: () => api.getApprovals(),
+  });
+
+  const reviewMutation = useMutation({
+    mutationFn: ({ id, decision }: { id: string; decision: 'approved' | 'rejected' }) =>
+      api.reviewApproval(id, decision),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['executions'] });
+      queryClient.invalidateQueries({ queryKey: ['execution-details', selectedExecutionId] });
+      queryClient.invalidateQueries({ queryKey: ['approvals'] });
+    },
   });
 
   const { data: details, isLoading: isDetailsLoading } = useQuery({
@@ -90,6 +108,7 @@ export default function ExecutionsPage() {
                   const isSuccess = exec.status === 'success';
                   const isFailed = exec.status === 'failed';
                   const isRunning = exec.status === 'running';
+                  const isWaiting = exec.status === 'waiting_for_approval';
 
                   return (
                     <div
@@ -98,13 +117,17 @@ export default function ExecutionsPage() {
                       className={`flex items-center justify-between p-4 rounded-xl border transition-all cursor-pointer ${
                         selectedExecutionId === exec.id
                           ? 'bg-[#181B2B] border-purple-500/50 shadow-md'
+                          : isWaiting
+                          ? 'bg-[#181B2B] border-amber-500/40 shadow-md shadow-amber-500/10'
                           : 'bg-[#12141F] border-white/5 hover:border-white/10 hover:bg-[#151826]'
                       }`}
                     >
                       <div className="flex items-center gap-3.5">
                         <div
                           className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                            isSuccess
+                            isWaiting
+                              ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20 animate-pulse'
+                              : isSuccess
                               ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
                               : isFailed
                               ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
@@ -113,7 +136,9 @@ export default function ExecutionsPage() {
                               : 'bg-zinc-500/10 text-zinc-400 border border-zinc-500/20'
                           }`}
                         >
-                          {isSuccess ? (
+                          {isWaiting ? (
+                            <ShieldAlert className="w-4 h-4" />
+                          ) : isSuccess ? (
                             <CheckCircle2 className="w-4 h-4" />
                           ) : isFailed ? (
                             <AlertCircle className="w-4 h-4" />
@@ -192,6 +217,63 @@ export default function ExecutionsPage() {
                         <span className="text-slate-200 uppercase">{details.triggerType}</span>
                       </div>
                     </div>
+
+                    {/* Блок Human-in-the-Loop подтверждения */}
+                    {details.status === 'waiting_for_approval' && (
+                      <div className="p-4 rounded-xl bg-amber-950/20 border border-amber-500/40 space-y-3">
+                        <div className="flex items-center gap-2 text-xs font-semibold text-amber-300">
+                          <ShieldAlert className="w-4 h-4 text-amber-400 animate-bounce" />
+                          <span>Требуется одобрение оператора (Human-in-the-Loop)</span>
+                        </div>
+                        <p className="text-xs text-slate-300 leading-relaxed">
+                          Агент остановил сценарий перед выполнением чувствительной операции и ожидает вашего решения.
+                        </p>
+                        {details.outputPayload && (
+                          <div className="bg-[#12141F] p-2.5 rounded-lg border border-white/5 space-y-1 text-xs">
+                            <div className="text-slate-400">
+                              Действие: <strong className="text-slate-100">{details.outputPayload.title || details.outputPayload.toolName || 'Запрос действия'}</strong>
+                            </div>
+                            {details.outputPayload.consequences && (
+                              <div className="text-slate-400">
+                                Последствия: <span className="text-amber-200">{details.outputPayload.consequences}</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2 pt-1">
+                          <button
+                            onClick={() => {
+                              const approvalId = details.outputPayload?.approvalId || pendingApprovals[0]?.id;
+                              if (approvalId) {
+                                reviewMutation.mutate({ id: approvalId, decision: 'approved' });
+                              } else {
+                                alert('Идентификатор запроса не найден');
+                              }
+                            }}
+                            disabled={reviewMutation.isPending}
+                            className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-md shadow-emerald-600/20 transition-all cursor-pointer"
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                            <span>Одобрить (Approve)</span>
+                          </button>
+                          <button
+                            onClick={() => {
+                              const approvalId = details.outputPayload?.approvalId || pendingApprovals[0]?.id;
+                              if (approvalId) {
+                                reviewMutation.mutate({ id: approvalId, decision: 'rejected' });
+                              } else {
+                                alert('Идентификатор запроса не найден');
+                              }
+                            }}
+                            disabled={reviewMutation.isPending}
+                            className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-rose-600/30 hover:bg-rose-600/50 border border-rose-500/30 text-rose-300 text-xs font-semibold transition-all cursor-pointer"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                            <span>Отклонить (Reject)</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Блок ошибки и AI Debugger */}
                     {(details.error || details.status === 'failed') && (

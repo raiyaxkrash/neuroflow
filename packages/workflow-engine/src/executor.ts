@@ -209,6 +209,34 @@ export class WorkflowExecutor {
           signal,
         });
 
+        // Если узел запросил подтверждение человека, приостанавливаем сценарий
+        if (output.outputData?.waitingForApproval) {
+          const nodeDurationMs = Date.now() - nodeStartTime;
+          context.setNodeResult(currentId, output.outputData, NodeExecutionStatus.WAITING_FOR_APPROVAL);
+          executedNodes.add(currentId);
+
+          if (saveToDatabase && db) {
+            try {
+              await db.update(nodeExecutions).set({
+                status: NodeExecutionStatus.WAITING_FOR_APPROVAL,
+                outputData: output.outputData,
+                finishedAt: new Date(),
+                durationMs: nodeDurationMs,
+              }).where(eq(nodeExecutions.executionId, executionId));
+
+              await db.update(executions).set({
+                status: ExecutionStatus.WAITING_FOR_APPROVAL,
+                outputPayload: output.outputData,
+              }).where(eq(executions.id, executionId));
+            } catch {
+              // Игнорируем
+            }
+          }
+
+          finalExecutionStatus = ExecutionStatus.WAITING_FOR_APPROVAL;
+          break;
+        }
+
         const nodeDurationMs = Date.now() - nodeStartTime;
         context.setNodeResult(currentId, output.outputData, NodeExecutionStatus.SUCCESS);
         executedNodes.add(currentId);
@@ -288,11 +316,12 @@ export class WorkflowExecutor {
     // Сохранение итогового статуса запуска
     if (saveToDatabase && db) {
       try {
+        const isWaiting = finalExecutionStatus === ExecutionStatus.WAITING_FOR_APPROVAL;
         await db.update(executions).set({
           status: finalExecutionStatus,
           outputPayload: finalPayload,
           error: executionError || null,
-          finishedAt: new Date(),
+          finishedAt: isWaiting ? null : new Date(),
           durationMs: totalDurationMs,
         }).where(eq(executions.id, executionId));
       } catch {

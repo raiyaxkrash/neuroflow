@@ -14,6 +14,13 @@ import {
   AlertCircle,
   Loader2,
   Sparkles,
+  Bot,
+  Network,
+  ArrowRightLeft,
+  Brain,
+  Wrench,
+  ShieldAlert,
+  Plug,
 } from 'lucide-react';
 import { useWorkflowStore } from '@/store/workflow-store';
 
@@ -25,6 +32,13 @@ const iconMap: Record<string, React.ReactNode> = {
   'delay': <Clock className="w-4 h-4 text-indigo-400" />,
   'output': <CheckCircle2 className="w-4 h-4 text-emerald-400" />,
   'ai-model': <Sparkles className="w-4 h-4 text-pink-400" />,
+  'ai-agent': <Bot className="w-4 h-4 text-cyan-400" />,
+  'agent-supervisor': <Network className="w-4 h-4 text-blue-400" />,
+  'agent-handoff': <ArrowRightLeft className="w-4 h-4 text-amber-400" />,
+  'agent-memory': <Brain className="w-4 h-4 text-emerald-400" />,
+  'tool-executor': <Wrench className="w-4 h-4 text-pink-400" />,
+  'human-approval': <ShieldAlert className="w-4 h-4 text-rose-400" />,
+  'mcp-tool': <Plug className="w-4 h-4 text-indigo-400" />,
 };
 
 const categoryLabels: Record<string, string> = {
@@ -35,6 +49,13 @@ const categoryLabels: Record<string, string> = {
   'delay': 'Utility',
   'output': 'Result',
   'ai-model': 'AI / LLM',
+  'ai-agent': 'AI Agent',
+  'agent-supervisor': 'Supervisor',
+  'agent-handoff': 'Handoff',
+  'agent-memory': 'Memory',
+  'tool-executor': 'Tool',
+  'human-approval': 'Approval',
+  'mcp-tool': 'MCP Tool',
 };
 
 export const CustomNode = memo(({ id, data, selected }: NodeProps) => {
@@ -55,7 +76,9 @@ export const CustomNode = memo(({ id, data, selected }: NodeProps) => {
     statusRingClass = 'border-purple-500 ring-2 ring-purple-500/20 shadow-lg shadow-purple-500/10';
   }
 
-  if (status === 'running') {
+  if (status === 'waiting_for_approval') {
+    statusRingClass = 'border-amber-500 ring-2 ring-amber-500/30 shadow-lg shadow-amber-500/20 animate-pulse';
+  } else if (status === 'running') {
     statusRingClass = 'border-cyan-500 ring-2 ring-cyan-500/30 shadow-lg shadow-cyan-500/20 animate-pulse';
   } else if (status === 'success') {
     statusRingClass = 'border-emerald-500/80 shadow-md shadow-emerald-500/10';
@@ -136,6 +159,12 @@ export const CustomNode = memo(({ id, data, selected }: NodeProps) => {
       {status && (
         <div className="mt-2 pt-2 border-t border-white/5 flex items-center justify-between text-[11px]">
           <div className="flex items-center gap-1.5">
+            {status === 'waiting_for_approval' && (
+              <>
+                <ShieldAlert className="w-3.5 h-3.5 text-amber-400 animate-bounce" />
+                <span className="text-amber-400 font-medium">Waiting Approval</span>
+              </>
+            )}
             {status === 'running' && (
               <>
                 <Loader2 className="w-3 h-3 text-cyan-400 animate-spin" />
@@ -189,6 +218,52 @@ export const CustomNode = memo(({ id, data, selected }: NodeProps) => {
               position={Position.Right}
               id="false"
               className="!w-3 !h-3 !bg-rose-500 !border-2 !border-[#0D0E15] hover:!scale-125 transition-transform"
+            />
+          </div>
+        </>
+      ) : nodeType === 'human-approval' ? (
+        <>
+          {/* Порт Approved */}
+          <div className="absolute -right-3 top-4 flex items-center gap-1">
+            <span className="text-[9px] font-mono font-bold text-emerald-400 -ml-12 select-none">APPROVE</span>
+            <Handle
+              type="source"
+              position={Position.Right}
+              id="approved"
+              className="!w-3 !h-3 !bg-emerald-500 !border-2 !border-[#0D0E15] hover:!scale-125 transition-transform"
+            />
+          </div>
+          {/* Порт Rejected */}
+          <div className="absolute -right-3 bottom-4 flex items-center gap-1">
+            <span className="text-[9px] font-mono font-bold text-rose-400 -ml-10 select-none">REJECT</span>
+            <Handle
+              type="source"
+              position={Position.Right}
+              id="rejected"
+              className="!w-3 !h-3 !bg-rose-500 !border-2 !border-[#0D0E15] hover:!scale-125 transition-transform"
+            />
+          </div>
+        </>
+      ) : nodeType === 'ai-agent' ? (
+        <>
+          {/* Порт Main */}
+          <div className="absolute -right-3 top-4 flex items-center gap-1">
+            <span className="text-[9px] font-mono text-cyan-400 -ml-8 select-none">OUT</span>
+            <Handle
+              type="source"
+              position={Position.Right}
+              id="main"
+              className="!w-3 !h-3 !bg-cyan-500 !border-2 !border-[#0D0E15] hover:!scale-125 transition-transform"
+            />
+          </div>
+          {/* Порт Handoff */}
+          <div className="absolute -right-3 bottom-4 flex items-center gap-1">
+            <span className="text-[9px] font-mono text-amber-400 -ml-12 select-none">HANDOFF</span>
+            <Handle
+              type="source"
+              position={Position.Right}
+              id="handoff"
+              className="!w-3 !h-3 !bg-amber-500 !border-2 !border-[#0D0E15] hover:!scale-125 transition-transform"
             />
           </div>
         </>

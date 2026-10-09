@@ -124,6 +124,82 @@ export async function runMigrations() {
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )`,
     sql`CREATE INDEX IF NOT EXISTS ai_providers_user_id_idx ON ai_providers(user_id)`,
+
+    sql`CREATE TABLE IF NOT EXISTS mcp_servers (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      description TEXT,
+      transport TEXT NOT NULL,
+      server_url TEXT,
+      command TEXT,
+      args JSONB NOT NULL DEFAULT '[]'::jsonb,
+      env_encrypted TEXT,
+      auth_type TEXT NOT NULL DEFAULT 'none',
+      api_key_encrypted TEXT,
+      headers_encrypted TEXT,
+      capabilities JSONB NOT NULL DEFAULT '{}'::jsonb,
+      discovered_tools JSONB NOT NULL DEFAULT '[]'::jsonb,
+      discovered_resources JSONB NOT NULL DEFAULT '[]'::jsonb,
+      discovered_prompts JSONB NOT NULL DEFAULT '[]'::jsonb,
+      is_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`,
+    sql`CREATE INDEX IF NOT EXISTS mcp_servers_user_id_idx ON mcp_servers(user_id)`,
+
+    sql`CREATE TABLE IF NOT EXISTS approvals (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      execution_id UUID NOT NULL REFERENCES executions(id) ON DELETE CASCADE,
+      node_id TEXT NOT NULL,
+      agent_id TEXT,
+      tool_name TEXT NOT NULL,
+      tool_arguments JSONB NOT NULL DEFAULT '{}'::jsonb,
+      consequences TEXT,
+      action_fingerprint TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending',
+      reviewed_by UUID REFERENCES users(id) ON DELETE SET NULL,
+      reviewed_at TIMESTAMPTZ,
+      rejection_reason TEXT,
+      expires_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`,
+    sql`CREATE INDEX IF NOT EXISTS approvals_execution_id_idx ON approvals(execution_id)`,
+    sql`CREATE INDEX IF NOT EXISTS approvals_status_idx ON approvals(status)`,
+
+    sql`CREATE TABLE IF NOT EXISTS agent_memories (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      agent_id TEXT,
+      workflow_id UUID REFERENCES workflows(id) ON DELETE CASCADE,
+      execution_id UUID REFERENCES executions(id) ON DELETE CASCADE,
+      scope TEXT NOT NULL,
+      key TEXT NOT NULL,
+      value JSONB NOT NULL,
+      metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+      expires_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`,
+    sql`CREATE INDEX IF NOT EXISTS agent_memories_user_id_idx ON agent_memories(user_id)`,
+    sql`CREATE INDEX IF NOT EXISTS agent_memories_scope_key_idx ON agent_memories(scope, key)`,
+    sql`CREATE INDEX IF NOT EXISTS agent_memories_agent_id_idx ON agent_memories(agent_id)`,
+
+    sql`CREATE TABLE IF NOT EXISTS agent_execution_logs (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      execution_id UUID NOT NULL REFERENCES executions(id) ON DELETE CASCADE,
+      node_id TEXT NOT NULL,
+      agent_id TEXT,
+      event_type TEXT NOT NULL,
+      payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+      tokens_used INTEGER NOT NULL DEFAULT 0,
+      cost_estimate INTEGER NOT NULL DEFAULT 0,
+      duration_ms INTEGER,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`,
+    sql`CREATE INDEX IF NOT EXISTS agent_execution_logs_exec_id_idx ON agent_execution_logs(execution_id)`,
+    sql`CREATE INDEX IF NOT EXISTS agent_execution_logs_node_id_idx ON agent_execution_logs(node_id)`,
   ];
 
   for (const stmt of statements) {

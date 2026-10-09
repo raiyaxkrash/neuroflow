@@ -7,6 +7,13 @@ import { SetDataNode } from './definitions/set-data.js';
 import { DelayNode } from './definitions/delay.js';
 import { OutputNode } from './definitions/output.js';
 import { AIModelNode } from './definitions/ai-model.js';
+import { AIAgentNode } from './definitions/ai-agent.js';
+import { AgentSupervisorNode } from './definitions/agent-supervisor.js';
+import { AgentHandoffNode } from './definitions/agent-handoff.js';
+import { AgentMemoryNode } from './definitions/agent-memory.js';
+import { ToolExecutorNode } from './definitions/tool-executor.js';
+import { HumanApprovalNode } from './definitions/human-approval.js';
+import { MCPToolNode } from './definitions/mcp-tool.js';
 
 export class NodeRegistry {
   private nodes = new Map<string, INodeDefinition>();
@@ -23,6 +30,13 @@ export class NodeRegistry {
     this.register(new DelayNode());
     this.register(new OutputNode());
     this.register(new AIModelNode());
+    this.register(new AIAgentNode());
+    this.register(new AgentSupervisorNode());
+    this.register(new AgentHandoffNode());
+    this.register(new AgentMemoryNode());
+    this.register(new ToolExecutorNode());
+    this.register(new HumanApprovalNode());
+    this.register(new MCPToolNode());
   }
 
   public static getInstance(): NodeRegistry {
