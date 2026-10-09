@@ -3,133 +3,204 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
-    --background: #090a0f;
-    --foreground: #f8fafc;
+  /* LIGHT THEME (Forest Light / Quiet Infrastructure) */
+  :root,
+  .light {
+    --background: #f6f7f4;
+    --foreground: #1e2a22;
 
-    --card: #12141f;
-    --card-foreground: #f8fafc;
+    --card: #ffffff;
+    --card-foreground: #1e2a22;
 
-    --popover: #181b2b;
-    --popover-foreground: #f8fafc;
+    --popover: #ffffff;
+    --popover-foreground: #1e2a22;
 
-    --primary: #8b5cf6;
+    --sidebar: #17241d;
+    --sidebar-foreground: #d4dfd4;
+    --sidebar-muted: #81998b;
+    --sidebar-hover: #223429;
+    --sidebar-active: #2e4335;
+    --sidebar-border: #283a2f;
+
+    --primary: #243a2b;
     --primary-foreground: #ffffff;
 
-    --secondary: #181b2b;
-    --secondary-foreground: #f8fafc;
+    --secondary: #f0f4ee;
+    --secondary-foreground: #1e2a22;
 
-    --muted: #1e2235;
-    --muted-foreground: #94a3b8;
+    --muted: #f0f4ee;
+    --muted-foreground: #586a5e;
 
-    --accent: #23273d;
-    --accent-foreground: #f8fafc;
+    --accent: #243a2b;
+    --accent-foreground: #ffffff;
+    --accent-highlight: #c9ed84;
+    --accent-highlight-text: #17241d;
 
-    --destructive: #ef4444;
+    --destructive: #b43434;
     --destructive-foreground: #ffffff;
 
-    --border: rgba(255, 255, 255, 0.08);
-    --input: rgba(255, 255, 255, 0.12);
-    --ring: #8b5cf6;
+    --border: #e0e6dd;
+    --border-subtle: #ebf0e9;
+    --border-strong: #ccd6c8;
+    --input: #e0e6dd;
+    --ring: #c9ed84;
+
+    --status-success: #2e6844;
+    --status-success-bg: #ebf5ee;
+    --status-success-border: #cce6d4;
+
+    --status-warning: #9e6720;
+    --status-warning-bg: #faf1e3;
+    --status-warning-border: #f0dec0;
+
+    --status-error: #b43434;
+    --status-error-bg: #fdf0f0;
+    --status-error-border: #f7d2d2;
+
+    --status-info: #2563eb;
+    --status-info-bg: #eff6ff;
+    --status-info-border: #dbeafe;
 
     --radius: 0.625rem;
   }
 
-  .light {
-    --background: #f8fafc;
-    --foreground: #090a0f;
+  /* DARK THEME (Obsidian Forest / Quiet Infrastructure) */
+  .dark,
+  [data-theme="dark"] {
+    --background: #0e1512;
+    --foreground: #ecf3ed;
 
-    --card: #ffffff;
-    --card-foreground: #090a0f;
+    --card: #141e19;
+    --card-foreground: #ecf3ed;
 
-    --popover: #ffffff;
-    --popover-foreground: #090a0f;
+    --popover: #1e2e25;
+    --popover-foreground: #ecf3ed;
 
-    --primary: #7c3aed;
-    --primary-foreground: #ffffff;
+    --sidebar: #0a110d;
+    --sidebar-foreground: #d4dfd4;
+    --sidebar-muted: #748c7c;
+    --sidebar-hover: #15221b;
+    --sidebar-active: #1d2f25;
+    --sidebar-border: #1a2820;
 
-    --secondary: #f1f5f9;
-    --secondary-foreground: #0f172a;
+    --primary: #c9ed84;
+    --primary-foreground: #0d1610;
 
-    --muted: #f1f5f9;
-    --muted-foreground: #64748b;
+    --secondary: #192720;
+    --secondary-foreground: #ecf3ed;
 
-    --accent: #f1f5f9;
-    --accent-foreground: #0f172a;
+    --muted: #192720;
+    --muted-foreground: #9cb3a3;
 
-    --destructive: #ef4444;
+    --accent: #c9ed84;
+    --accent-foreground: #0d1610;
+    --accent-highlight: #c9ed84;
+    --accent-highlight-text: #17241d;
+
+    --destructive: #f87171;
     --destructive-foreground: #ffffff;
 
-    --border: #e2e8f0;
-    --input: #cbd5e1;
-    --ring: #7c3aed;
+    --border: #23352b;
+    --border-subtle: #1a2921;
+    --border-strong: #334c3e;
+    --input: #23352b;
+    --ring: #c9ed84;
+
+    --status-success: #4ade80;
+    --status-success-bg: rgba(74, 222, 128, 0.12);
+    --status-success-border: rgba(74, 222, 128, 0.25);
+
+    --status-warning: #fbbf24;
+    --status-warning-bg: rgba(251, 191, 36, 0.12);
+    --status-warning-border: rgba(251, 191, 36, 0.25);
+
+    --status-error: #f87171;
+    --status-error-bg: rgba(248, 113, 113, 0.12);
+    --status-error-border: rgba(248, 113, 113, 0.25);
+
+    --status-info: #60a5fa;
+    --status-info-bg: rgba(96, 165, 250, 0.12);
+    --status-info-border: rgba(96, 165, 250, 0.25);
   }
 }
 
 body {
   color: var(--foreground);
-  background: var(--background);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif;
+  background-color: var(--background);
+  font-family: 'Inter', ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   overflow-x: hidden;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
-/* React Flow Canvas Стилизация */
+/* Accessibility: Focus visible */
+*:focus-visible {
+  outline: 2px solid var(--accent-highlight);
+  outline-offset: 2px;
+}
+
+/* Accessibility: Respect Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* React Flow Canvas Стилизация (Quiet Infrastructure) */
 .react-flow__renderer {
-  background-color: #0d0e15 !important;
+  background-color: var(--card) !important;
 }
 
 .react-flow__edge-path {
-  stroke: rgba(255, 255, 255, 0.25);
-  stroke-width: 2;
+  stroke: var(--border-strong) !important;
+  stroke-width: 1.8 !important;
   transition: stroke 0.2s ease, stroke-width 0.2s ease;
 }
 
 .react-flow__edge.selected .react-flow__edge-path {
-  stroke: #8b5cf6 !important;
-  stroke-width: 2.5 !important;
+  stroke: var(--accent-highlight) !important;
+  stroke-width: 2.2 !important;
 }
 
 .react-flow__edge.running .react-flow__edge-path {
-  stroke: #06b6d4 !important;
+  stroke: var(--status-success) !important;
   stroke-dasharray: 5;
   animation: edgeFlow 1s linear infinite;
 }
 
 @keyframes edgeFlow {
-  from {
-    stroke-dashoffset: 10;
-  }
-  to {
-    stroke-dashoffset: 0;
-  }
+  from { stroke-dashoffset: 10; }
+  to { stroke-dashoffset: 0; }
 }
 
 .react-flow__handle {
-  width: 10px;
-  height: 10px;
-  background-color: #8b5cf6;
-  border: 2px solid #0d0e15;
+  width: 9px;
+  height: 9px;
+  background-color: var(--status-success);
+  border: 2px solid var(--card);
   border-radius: 9999px;
   transition: transform 0.15s ease, background-color 0.15s ease;
 }
 
 .react-flow__handle:hover {
-  transform: scale(1.3);
-  background-color: #a78bfa;
+  transform: scale(1.25);
+  background-color: var(--accent-highlight);
 }
 
-/* Тонкий кастомный скроллбар */
+/* Кастомный тонкий скроллбар */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.1);
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--border-strong);
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.25);
+  background: var(--muted-foreground);
 }

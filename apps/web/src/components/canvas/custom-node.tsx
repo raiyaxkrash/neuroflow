@@ -132,26 +132,26 @@ export const CustomNode = memo(({ id, data, selected }: NodeProps) => {
   const status = nodeExecState?.status;
   const durationMs = nodeExecState?.durationMs;
 
-  let statusRingClass = 'border-white/10 hover:border-white/20';
+  let statusRingClass = 'border-border hover:border-border-strong';
   if (selected) {
-    statusRingClass = 'border-purple-500 ring-2 ring-purple-500/20 shadow-lg shadow-purple-500/10';
+    statusRingClass = 'border-highlight ring-2 ring-highlight/40 shadow-md';
   }
 
   if (status === 'waiting_for_approval') {
-    statusRingClass = 'border-amber-500 ring-2 ring-amber-500/30 shadow-lg shadow-amber-500/20 animate-pulse';
+    statusRingClass = 'border-status-warning ring-2 ring-status-warning/40 shadow-md animate-pulse';
   } else if (status === 'running') {
-    statusRingClass = 'border-cyan-500 ring-2 ring-cyan-500/30 shadow-lg shadow-cyan-500/20 animate-pulse';
+    statusRingClass = 'border-status-info ring-2 ring-status-info/40 shadow-md animate-pulse';
   } else if (status === 'success') {
-    statusRingClass = 'border-emerald-500/80 shadow-md shadow-emerald-500/10';
+    statusRingClass = 'border-status-success/80 shadow-sm';
   } else if (status === 'failed') {
-    statusRingClass = 'border-rose-500 shadow-md shadow-rose-500/20';
+    statusRingClass = 'border-status-error shadow-sm';
   } else if (status === 'skipped') {
-    statusRingClass = 'border-zinc-700/60 opacity-60';
+    statusRingClass = 'border-border/50 opacity-60';
   }
 
   return (
     <div
-      className={`relative min-w-[240px] max-w-[280px] rounded-xl bg-[#12141F] border backdrop-blur-md p-3 transition-all duration-150 ${statusRingClass}`}
+      className={`relative min-w-[240px] max-w-[280px] rounded-xl bg-card border p-3 transition-all duration-150 text-card-foreground shadow-sm ${statusRingClass}`}
     >
       {/* Входной Handle слева (если не триггер) */}
       {!isTrigger && (
@@ -159,19 +159,19 @@ export const CustomNode = memo(({ id, data, selected }: NodeProps) => {
           type="target"
           position={Position.Left}
           id="main"
-          className="!w-3 !h-3 !bg-purple-500 !border-2 !border-[#0D0E15] hover:!scale-125 transition-transform"
+          className="!w-3 !h-3 !bg-highlight !border-2 !border-background hover:!scale-125 transition-transform"
         />
       )}
 
       {/* Шапка узла */}
       <div className="flex items-center justify-between gap-2 mb-2">
         <div className="flex items-center gap-2 min-w-0">
-          <div className="w-7 h-7 rounded-lg bg-[#181B2B] flex items-center justify-center border border-white/5">
-            {iconMap[nodeType] || <Play className="w-4 h-4 text-purple-400" />}
+          <div className="w-7 h-7 rounded-lg bg-muted flex items-center justify-center border border-border">
+            {iconMap[nodeType] || <Play className="w-4 h-4 text-primary" />}
           </div>
           <div className="truncate">
-            <div className="text-xs font-semibold text-slate-100 truncate">{label}</div>
-            <div className="text-[10px] text-slate-400 uppercase tracking-wider">
+            <div className="text-xs font-semibold text-foreground truncate">{label}</div>
+            <div className="text-[10px] text-muted-foreground uppercase tracking-wider font-mono">
               {categoryLabels[nodeType] || 'Node'}
             </div>
           </div>
@@ -186,7 +186,7 @@ export const CustomNode = memo(({ id, data, selected }: NodeProps) => {
                 duplicateNode(id);
               }}
               title="Дублировать (Ctrl+D)"
-              className="p-1 rounded hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+              className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
             >
               <Copy className="w-3.5 h-3.5" />
             </button>
@@ -196,7 +196,7 @@ export const CustomNode = memo(({ id, data, selected }: NodeProps) => {
                 deleteNode(id);
               }}
               title="Удалить (Del)"
-              className="p-1 rounded hover:bg-red-500/20 text-slate-400 hover:text-red-400 transition-colors"
+              className="p-1 rounded hover:bg-status-error-bg text-muted-foreground hover:text-status-error transition-colors"
             >
               <Trash2 className="w-3.5 h-3.5" />
             </button>
@@ -206,11 +206,11 @@ export const CustomNode = memo(({ id, data, selected }: NodeProps) => {
 
       {/* Инфо бейдж для AI узла */}
       {nodeType === 'ai-model' && (
-        <div className="mb-2 px-2 py-1 rounded bg-[#181B2B] border border-white/5 flex items-center justify-between text-[10px]">
-          <span className="text-pink-300 font-mono truncate max-w-[130px]">
+        <div className="mb-2 px-2 py-1 rounded bg-muted/60 border border-border flex items-center justify-between text-[10px]">
+          <span className="text-primary font-mono truncate max-w-[130px]">
             {((data.parameters as any)?.model) || 'gpt-4o-mini'}
           </span>
-          <span className="text-slate-400 uppercase text-[9px] font-mono px-1.5 py-0.5 rounded bg-white/5">
+          <span className="text-muted-foreground uppercase text-[9px] font-mono px-1.5 py-0.5 rounded bg-muted">
             {((data.parameters as any)?.provider) || 'openai'}
           </span>
         </div>

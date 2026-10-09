@@ -19,7 +19,6 @@ import {
   RefreshCw,
   Plus,
 } from 'lucide-react';
-import { Sidebar } from '@/components/layout/sidebar';
 
 interface MissionItem {
   id: string;
@@ -51,13 +50,138 @@ interface MissionTask {
   outputData?: any;
 }
 
+const DEFAULT_DEMO_MISSIONS: MissionItem[] = [
+  {
+    id: 'mission-demo-1',
+    title: 'Автономный аудит и исследование AI-агентов 2026',
+    goal: 'Провести исследование архитектурных паттернов многоагентных систем, протестировать MCP серверы и сгенерировать аналитический отчет',
+    status: 'completed',
+    progressPercent: 100,
+    totalTasks: 3,
+    completedTasks: 3,
+    failedTasks: 0,
+    tokensUsed: 14250,
+    tokenBudget: 50000,
+    costBudget: 0,
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'mission-demo-2',
+    title: 'Синхронизация протокола Model Context Protocol',
+    goal: 'Мониторинг обновлений спецификаций MCP, проверка валидности JSON-RPC схем и автогенерация TypeScript адаптеров',
+    status: 'ready',
+    progressPercent: 0,
+    totalTasks: 3,
+    completedTasks: 0,
+    failedTasks: 0,
+    tokensUsed: 0,
+    tokenBudget: 35000,
+    costBudget: 0,
+    createdAt: new Date().toISOString(),
+  },
+];
+
+const DEFAULT_DEMO_TASKS: MissionTask[] = [
+  {
+    id: 'task-1',
+    taskKey: 'step_1_gather_context',
+    title: 'Сбор контекста и исследование требований',
+    description: 'Анализ спецификаций MCP, выявление инструментов и начальных условий многоагентной оркестрации.',
+    assignedAgent: 'Web Researcher',
+    dependencies: [],
+    status: 'completed',
+    retryCount: 0,
+    maxRetries: 3,
+    criteria: [
+      { id: 'c1', description: 'Контекст и исходные данные успешно собраны и зафиксированы', expectedType: 'non_empty_string' },
+    ],
+    outputData: {
+      content: 'Спецификации и актуальные паттерны многоагентных систем успешно собраны. Обнаружено 12 ключевых сценариев.',
+      sourcesCount: 5,
+    },
+  },
+  {
+    id: 'task-2',
+    taskKey: 'step_2_core_execution',
+    title: 'Выполнение основного сценария и извлечение данных',
+    description: 'Тестирование ReAct циклов, валидация tool call вызовов и замер задержек взаимодействия агентов.',
+    assignedAgent: 'Code Specialist',
+    dependencies: ['step_1_gather_context'],
+    status: 'completed',
+    retryCount: 0,
+    maxRetries: 3,
+    criteria: [
+      { id: 'c2', description: 'Целевое действие выполнено без критических ошибок', expectedType: 'custom' },
+    ],
+    outputData: {
+      benchmarks: { latencyMs: 240, accuracyPercent: 99.4, toolCallSuccess: true },
+      status: 'success',
+    },
+  },
+  {
+    id: 'task-3',
+    taskKey: 'step_3_verification_and_reporting',
+    title: 'Верификация результатов и формирование артефакта',
+    description: 'Независимая проверка критериев готовности ResultVerifier и экспорт финального отчета в Second Brain.',
+    assignedAgent: 'Report Writer',
+    dependencies: ['step_2_core_execution'],
+    status: 'completed',
+    retryCount: 0,
+    maxRetries: 2,
+    criteria: [
+      { id: 'c3', description: 'Финальный отчет и структурированный результат сформированы', expectedType: 'non_empty_string' },
+    ],
+    outputData: {
+      summary: 'Аналитический отчет подготовлен и сохранен в базе знаний Second Brain.',
+      status: 'completed',
+    },
+  },
+];
+
+const DEFAULT_DEMO_CHECKPOINTS = [
+  {
+    id: 'cp-3',
+    checkpointType: 'task_completed',
+    createdAt: new Date().toISOString(),
+    stateSnapshot: { tasks: [1, 2, 3] },
+  },
+  {
+    id: 'cp-2',
+    checkpointType: 'task_completed',
+    createdAt: new Date(Date.now() - 60000).toISOString(),
+    stateSnapshot: { tasks: [1, 2] },
+  },
+  {
+    id: 'cp-1',
+    checkpointType: 'manual_pause',
+    createdAt: new Date(Date.now() - 120000).toISOString(),
+    stateSnapshot: { tasks: [1] },
+  },
+];
+
+const DEFAULT_DEMO_LOGS = [
+  { id: 'log-4', level: 'info', message: 'Миссия успешно выполнена. Итоговый отчет сохранен в Second Brain.', createdAt: new Date().toISOString() },
+  { id: 'log-3', level: 'info', message: 'Задача "Верификация результатов": все критерии готовности подтверждены.', createdAt: new Date(Date.now() - 30000).toISOString() },
+  { id: 'log-2', level: 'info', message: 'Задача "Выполнение основного сценария" завершена (токены: 420).', createdAt: new Date(Date.now() - 60000).toISOString() },
+  { id: 'log-1', level: 'info', message: 'Миссия переведена в статус выполнения.', createdAt: new Date(Date.now() - 120000).toISOString() },
+];
+
 export default function MissionsPage() {
-  const [missions, setMissions] = useState<MissionItem[]>([]);
-  const [selectedMissionId, setSelectedMissionId] = useState<string | null>(null);
-  const [currentMission, setCurrentMission] = useState<any>(null);
-  const [tasks, setTasks] = useState<MissionTask[]>([]);
-  const [checkpoints, setCheckpoints] = useState<any[]>([]);
-  const [logs, setLogs] = useState<any[]>([]);
+  const [missions, setMissions] = useState<MissionItem[]>(DEFAULT_DEMO_MISSIONS);
+  const [selectedMissionId, setSelectedMissionId] = useState<string | null>('mission-demo-1');
+  const [currentMission, setCurrentMission] = useState<any>({
+    ...DEFAULT_DEMO_MISSIONS[0],
+    finalResult: {
+      summary: 'Миссия успешно выполнена. Все 3 подзадачи завершены и верифицированы.',
+      artifacts: {
+        research: 'Спецификации и архитектурные тренды собраны',
+        benchmarks: { latencyMs: 240, accuracyPercent: 99.4 },
+      },
+    },
+  });
+  const [tasks, setTasks] = useState<MissionTask[]>(DEFAULT_DEMO_TASKS);
+  const [checkpoints, setCheckpoints] = useState<any[]>(DEFAULT_DEMO_CHECKPOINTS);
+  const [logs, setLogs] = useState<any[]>(DEFAULT_DEMO_LOGS);
   const [activeTab, setActiveTab] = useState<'dag' | 'checkpoints' | 'logs' | 'result'>('dag');
   const [isLoading, setIsLoading] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
@@ -72,9 +196,11 @@ export default function MissionsPage() {
       const res = await fetch('/api/missions');
       if (res.ok) {
         const data = await res.json();
-        setMissions(data.missions || []);
-        if (data.missions?.length > 0 && !selectedMissionId) {
-          setSelectedMissionId(data.missions[0].id);
+        if (data.missions?.length > 0) {
+          setMissions(data.missions);
+          if (!selectedMissionId) {
+            setSelectedMissionId(data.missions[0].id);
+          }
         }
       }
     } catch {
@@ -170,37 +296,37 @@ export default function MissionsPage() {
     switch (status) {
       case 'completed':
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-status-success-bg text-status-success border border-status-success-border">
             <CheckCircle2 className="w-3 h-3" /> Завершена
           </span>
         );
       case 'running':
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-500/10 text-purple-400 border border-purple-500/20 animate-pulse">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-status-warning-bg text-status-warning border border-status-warning-border animate-pulse">
             <RefreshCw className="w-3 h-3 animate-spin" /> Выполняется
           </span>
         );
       case 'paused':
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-status-warning-bg text-status-warning border border-status-warning-border">
             <Pause className="w-3 h-3" /> На паузе
           </span>
         );
       case 'waiting_for_approval':
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-rose-500/10 text-rose-400 border border-rose-500/20">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-status-error-bg text-status-error border border-status-error-border">
             <ShieldAlert className="w-3 h-3" /> Ждет одобрения
           </span>
         );
       case 'failed':
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-500/10 text-red-400 border border-red-500/20">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-status-error-bg text-status-error border border-status-error-border">
             <XCircle className="w-3 h-3" /> Ошибка
           </span>
         );
       default:
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-slate-500/10 text-slate-400 border border-slate-500/20">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground border border-border">
             <Clock className="w-3 h-3" /> Готова
           </span>
         );
@@ -210,23 +336,21 @@ export default function MissionsPage() {
   const waitingApprovalTask = tasks.find((t) => t.status === 'waiting_for_approval');
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[#090A0F]">
-      <Sidebar />
-      <div className="flex-1 flex flex-col h-screen overflow-hidden bg-[#0D0F17] text-slate-200">
-        {/* Шапка страницы */}
-        <header className="h-16 border-b border-white/10 px-6 flex items-center justify-between shrink-0 bg-[#12141F]">
+    <div className="flex-1 flex flex-col h-full overflow-hidden bg-background text-foreground">
+      {/* Шапка страницы */}
+      <header className="h-16 border-b border-border px-6 flex items-center justify-between shrink-0 bg-card">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-purple-600/20 border border-purple-500/30 flex items-center justify-center text-purple-400">
+          <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
             <Target className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="text-base font-semibold text-white tracking-tight flex items-center gap-2">
+            <h1 className="text-base font-semibold text-foreground tracking-tight flex items-center gap-2">
               Автономные миссии (Mission Engine)
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
                 Phase 7
               </span>
             </h1>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-muted-foreground">
               Комплексные многоэтапные задания, планирование DAG, самокоррекция и персистентность
             </p>
           </div>
@@ -235,7 +359,7 @@ export default function MissionsPage() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => setIsCreating(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-medium transition shadow-lg shadow-purple-600/20"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary hover:opacity-90 text-primary-foreground text-xs font-medium transition shadow-sm"
           >
             <Plus className="w-4 h-4" />
             Создать миссию
@@ -246,14 +370,14 @@ export default function MissionsPage() {
       {/* Основной контент */}
       <div className="flex-1 flex overflow-hidden">
         {/* Левая колонка: список миссий */}
-        <aside className="w-80 border-r border-white/10 bg-[#12141F]/60 flex flex-col shrink-0">
-          <div className="p-4 border-b border-white/5 flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
+        <aside className={`w-full md:w-72 lg:w-80 border-r border-border bg-card flex flex-col shrink-0 ${selectedMissionId ? 'hidden md:flex' : 'flex'}`}>
+          <div className="p-4 border-b border-border flex items-center justify-between">
+            <span className="text-xs font-semibold text-foreground uppercase tracking-wider">
               Все миссии ({missions.length})
             </span>
             <button
               onClick={fetchMissions}
-              className="text-slate-400 hover:text-white transition p-1 rounded"
+              className="text-muted-foreground hover:text-foreground transition p-1 rounded"
               title="Обновить список"
             >
               <RefreshCw className="w-3.5 h-3.5" />
@@ -262,7 +386,7 @@ export default function MissionsPage() {
 
           <div className="flex-1 overflow-y-auto p-3 space-y-2">
             {missions.length === 0 ? (
-              <div className="p-6 text-center text-xs text-slate-500">
+              <div className="p-6 text-center text-xs text-muted-foreground">
                 Миссий пока нет. Нажмите &quot;Создать миссию&quot; для старта первого автономного задания.
               </div>
             ) : (
@@ -274,35 +398,35 @@ export default function MissionsPage() {
                     onClick={() => setSelectedMissionId(m.id)}
                     className={`p-3 rounded-xl border cursor-pointer transition text-left ${
                       isSelected
-                        ? 'bg-purple-600/15 border-purple-500/40 shadow-sm'
-                        : 'bg-[#181B2B]/60 border-white/5 hover:border-white/15'
+                        ? 'bg-secondary border-border border-l-2 border-l-highlight shadow-sm'
+                        : 'bg-card border-border hover:bg-muted/50'
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2 mb-1.5">
-                      <h4 className="text-xs font-semibold text-white line-clamp-1">
+                      <h4 className="text-xs font-semibold text-foreground line-clamp-1">
                         {m.title}
                       </h4>
                       {getStatusBadge(m.status)}
                     </div>
-                    <p className="text-[11px] text-slate-400 line-clamp-2 mb-2.5">
+                    <p className="text-[11px] text-muted-foreground line-clamp-2 mb-2.5">
                       {m.goal}
                     </p>
 
                     {/* Прогресс-бар */}
                     <div className="space-y-1">
-                      <div className="flex justify-between text-[10px] text-slate-400">
+                      <div className="flex justify-between text-[10px] text-muted-foreground">
                         <span>Прогресс</span>
-                        <span className="font-mono text-slate-200">{m.progressPercent}%</span>
+                        <span className="font-mono text-foreground">{m.progressPercent}%</span>
                       </div>
-                      <div className="h-1.5 w-full bg-black/40 rounded-full overflow-hidden border border-white/5">
+                      <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden border border-border/50">
                         <div
-                          className="h-full bg-gradient-to-r from-purple-500 to-indigo-500 rounded-full transition-all duration-300"
+                          className="h-full bg-primary rounded-full transition-all duration-300"
                           style={{ width: `${m.progressPercent}%` }}
                         />
                       </div>
                     </div>
 
-                    <div className="mt-2.5 flex items-center justify-between text-[10px] text-slate-500 pt-2 border-t border-white/5">
+                    <div className="mt-2.5 flex items-center justify-between text-[10px] text-muted-foreground pt-2 border-t border-border">
                       <span className="flex items-center gap-1">
                         <Layers className="w-3 h-3" /> {m.completedTasks}/{m.totalTasks} этапов
                       </span>
@@ -318,21 +442,29 @@ export default function MissionsPage() {
         </aside>
 
         {/* Правая часть: детали выбранной миссии */}
-        <main className="flex-1 flex flex-col overflow-y-auto bg-[#0D0F17]">
+        <main className={`flex-1 flex flex-col overflow-y-auto bg-[#0D0F17] ${!selectedMissionId ? 'hidden md:flex' : 'flex'}`}>
           {currentMission ? (
-            <div className="p-6 space-y-6 max-w-6xl w-full mx-auto">
+            <div className="p-4 sm:p-6 space-y-6 max-w-6xl w-full mx-auto">
+              {/* Кнопка возврата к списку на мобильных */}
+              <button
+                onClick={() => setSelectedMissionId(null)}
+                className="md:hidden text-xs text-purple-400 hover:text-purple-300 transition flex items-center gap-1.5 font-medium py-1 px-2.5 rounded-lg bg-white/5 border border-white/10 w-fit"
+              >
+                ← Все миссии
+              </button>
+
               {/* Карточка заголовка миссии */}
-              <div className="p-5 rounded-2xl bg-[#12141F] border border-white/10 space-y-4 shadow-xl">
+              <div className="p-5 rounded-xl bg-card border border-border space-y-4 shadow-sm">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div>
                     <div className="flex items-center gap-2 mb-1">
-                      <h2 className="text-lg font-bold text-white tracking-tight">
+                      <h2 className="text-lg font-bold text-foreground tracking-tight">
                         {currentMission.title}
                       </h2>
                       {getStatusBadge(currentMission.status)}
                     </div>
-                    <p className="text-xs text-slate-300 font-mono bg-black/30 p-2 rounded-lg border border-white/5">
-                      <span className="text-purple-400 font-semibold">Цель: </span>
+                    <p className="text-xs text-muted-foreground font-mono bg-muted/40 p-2.5 rounded-lg border border-border">
+                      <span className="text-primary font-semibold">Цель: </span>
                       {currentMission.goal}
                     </p>
                   </div>
@@ -342,7 +474,7 @@ export default function MissionsPage() {
                     {currentMission.status === 'ready' && (
                       <button
                         onClick={() => handleAction('start')}
-                        className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold shadow-md shadow-purple-600/30 transition"
+                        className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-primary hover:opacity-90 text-primary-foreground text-xs font-semibold shadow-sm transition"
                       >
                         <Play className="w-3.5 h-3.5" /> Запустить миссию
                       </button>
@@ -350,7 +482,7 @@ export default function MissionsPage() {
                     {currentMission.status === 'running' && (
                       <button
                         onClick={() => handleAction('pause')}
-                        className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold shadow-md shadow-amber-600/30 transition"
+                        className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-status-warning text-white hover:opacity-90 text-xs font-semibold shadow-sm transition"
                       >
                         <Pause className="w-3.5 h-3.5" /> Приостановить
                       </button>
@@ -358,7 +490,7 @@ export default function MissionsPage() {
                     {currentMission.status === 'paused' && (
                       <button
                         onClick={() => handleAction('resume')}
-                        className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-md shadow-emerald-600/30 transition"
+                        className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-status-success text-white hover:opacity-90 text-xs font-semibold shadow-sm transition"
                       >
                         <RotateCcw className="w-3.5 h-3.5" /> Продолжить
                       </button>
@@ -366,7 +498,7 @@ export default function MissionsPage() {
                     {(currentMission.status === 'running' || currentMission.status === 'paused') && (
                       <button
                         onClick={() => handleAction('cancel')}
-                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/5 hover:bg-red-500/20 text-slate-400 hover:text-red-400 border border-white/10 text-xs transition"
+                        className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-muted hover:bg-status-error-bg text-muted-foreground hover:text-status-error border border-border text-xs transition"
                       >
                         <XCircle className="w-3.5 h-3.5" /> Отменить
                       </button>
@@ -376,21 +508,21 @@ export default function MissionsPage() {
 
                 {/* Баннер Human Approval, если задача ждет одобрения */}
                 {waitingApprovalTask && (
-                  <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-between gap-4 animate-pulse">
+                  <div className="p-4 rounded-xl bg-status-error-bg border border-status-error-border flex items-center justify-between gap-4 animate-pulse">
                     <div className="flex items-center gap-3">
-                      <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0" />
+                      <AlertTriangle className="w-5 h-5 text-status-error shrink-0" />
                       <div>
-                        <h4 className="text-xs font-semibold text-rose-200">
+                        <h4 className="text-xs font-semibold text-status-error">
                           Требуется подтверждение владельца (Human-in-the-Loop)
                         </h4>
-                        <p className="text-[11px] text-rose-300/80">
+                        <p className="text-[11px] text-muted-foreground">
                           Этап &quot;{waitingApprovalTask.title}&quot; содержит чувствительное действие и ожидает вашего решения.
                         </p>
                       </div>
                     </div>
                     <button
                       onClick={() => handleAction('approve', waitingApprovalTask.id)}
-                      className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold shadow-md transition shrink-0"
+                      className="px-4 py-2 rounded-xl bg-status-error hover:opacity-90 text-white text-xs font-semibold shadow-sm transition shrink-0"
                     >
                       Подтвердить и продолжить
                     </button>
@@ -399,25 +531,25 @@ export default function MissionsPage() {
 
                 {/* Метрики */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
-                  <div className="p-3 rounded-xl bg-black/30 border border-white/5">
-                    <span className="text-[10px] text-slate-400 block mb-0.5">Всего этапов</span>
-                    <span className="text-sm font-bold text-white font-mono">{tasks.length}</span>
+                  <div className="p-3 rounded-xl bg-muted/40 border border-border">
+                    <span className="text-[10px] text-muted-foreground block mb-0.5">Всего этапов</span>
+                    <span className="text-sm font-bold text-foreground font-mono">{tasks.length}</span>
                   </div>
-                  <div className="p-3 rounded-xl bg-black/30 border border-white/5">
-                    <span className="text-[10px] text-slate-400 block mb-0.5">Выполнено</span>
-                    <span className="text-sm font-bold text-emerald-400 font-mono">
+                  <div className="p-3 rounded-xl bg-muted/40 border border-border">
+                    <span className="text-[10px] text-muted-foreground block mb-0.5">Выполнено</span>
+                    <span className="text-sm font-bold text-status-success font-mono">
                       {tasks.filter((t) => t.status === 'completed').length}
                     </span>
                   </div>
-                  <div className="p-3 rounded-xl bg-black/30 border border-white/5">
-                    <span className="text-[10px] text-slate-400 block mb-0.5">Бюджет токенов</span>
-                    <span className="text-sm font-bold text-amber-400 font-mono">
+                  <div className="p-3 rounded-xl bg-muted/40 border border-border">
+                    <span className="text-[10px] text-muted-foreground block mb-0.5">Бюджет токенов</span>
+                    <span className="text-sm font-bold text-foreground font-mono">
                       {currentMission.tokensUsed} / {currentMission.tokenBudget}
                     </span>
                   </div>
-                  <div className="p-3 rounded-xl bg-black/30 border border-white/5">
-                    <span className="text-[10px] text-slate-400 block mb-0.5">Чекпоинтов</span>
-                    <span className="text-sm font-bold text-indigo-400 font-mono">
+                  <div className="p-3 rounded-xl bg-muted/40 border border-border">
+                    <span className="text-[10px] text-muted-foreground block mb-0.5">Чекпоинтов</span>
+                    <span className="text-sm font-bold text-foreground font-mono">
                       {checkpoints.length}
                     </span>
                   </div>
@@ -425,13 +557,13 @@ export default function MissionsPage() {
               </div>
 
               {/* Навигация по вкладкам */}
-              <div className="flex border-b border-white/10 gap-6 text-xs font-medium">
+              <div className="flex border-b border-border gap-6 text-xs font-medium">
                 <button
                   onClick={() => setActiveTab('dag')}
                   className={`pb-3 transition flex items-center gap-2 ${
                     activeTab === 'dag'
-                      ? 'border-b-2 border-purple-500 text-purple-400 font-semibold'
-                      : 'text-slate-400 hover:text-slate-200'
+                      ? 'border-b-2 border-highlight text-foreground font-semibold'
+                      : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
                   <Layers className="w-3.5 h-3.5" /> Граф и этапы DAG
@@ -440,8 +572,8 @@ export default function MissionsPage() {
                   onClick={() => setActiveTab('checkpoints')}
                   className={`pb-3 transition flex items-center gap-2 ${
                     activeTab === 'checkpoints'
-                      ? 'border-b-2 border-purple-500 text-purple-400 font-semibold'
-                      : 'text-slate-400 hover:text-slate-200'
+                      ? 'border-b-2 border-highlight text-foreground font-semibold'
+                      : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
                   <Clock className="w-3.5 h-3.5" /> Точки сохранения ({checkpoints.length})
@@ -450,8 +582,8 @@ export default function MissionsPage() {
                   onClick={() => setActiveTab('logs')}
                   className={`pb-3 transition flex items-center gap-2 ${
                     activeTab === 'logs'
-                      ? 'border-b-2 border-purple-500 text-purple-400 font-semibold'
-                      : 'text-slate-400 hover:text-slate-200'
+                      ? 'border-b-2 border-highlight text-foreground font-semibold'
+                      : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
                   <FileText className="w-3.5 h-3.5" /> Журнал логов ({logs.length})
@@ -460,8 +592,8 @@ export default function MissionsPage() {
                   onClick={() => setActiveTab('result')}
                   className={`pb-3 transition flex items-center gap-2 ${
                     activeTab === 'result'
-                      ? 'border-b-2 border-purple-500 text-purple-400 font-semibold'
-                      : 'text-slate-400 hover:text-slate-200'
+                      ? 'border-b-2 border-highlight text-foreground font-semibold'
+                      : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
                   <Sparkles className="w-3.5 h-3.5" /> Итог и Second Brain
@@ -474,11 +606,11 @@ export default function MissionsPage() {
                   {tasks.map((task, idx) => (
                     <div
                       key={task.id}
-                      className="p-4 rounded-xl bg-[#12141F] border border-white/10 space-y-3"
+                      className="p-4 rounded-xl bg-card border border-border space-y-3 shadow-sm"
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-center gap-2.5">
-                          <span className="w-6 h-6 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-[10px] font-mono text-purple-300">
+                          <span className="w-6 h-6 rounded-lg bg-muted border border-border flex items-center justify-center text-[10px] font-mono text-muted-foreground">
                             {idx + 1}
                           </span>
                           <div>
@@ -559,22 +691,22 @@ export default function MissionsPage() {
                     checkpoints.map((cp, idx) => (
                       <div
                         key={cp.id}
-                        className="p-3.5 rounded-xl bg-[#12141F] border border-white/10 flex items-center justify-between"
+                        className="p-3.5 rounded-xl bg-card border border-border flex items-center justify-between shadow-sm"
                       >
                         <div className="flex items-center gap-3">
-                          <div className="w-7 h-7 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+                          <div className="w-7 h-7 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
                             <Clock className="w-3.5 h-3.5" />
                           </div>
                           <div>
-                            <span className="text-xs font-semibold text-white block">
+                            <span className="text-xs font-semibold text-foreground block">
                               Чекпоинт #{checkpoints.length - idx}: {cp.checkpointType}
                             </span>
-                            <span className="text-[10px] text-slate-400 font-mono">
+                            <span className="text-[10px] text-muted-foreground font-mono">
                               ID: {cp.id} | {new Date(cp.createdAt).toLocaleString('ru-RU')}
                             </span>
                           </div>
                         </div>
-                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white/5 text-slate-300 border border-white/10">
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-muted text-muted-foreground border border-border">
                           {cp.stateSnapshot?.tasks?.length || 0} задач в снимке
                         </span>
                       </div>
@@ -616,31 +748,31 @@ export default function MissionsPage() {
 
               {/* Содержимое вкладки: Итог и Second Brain */}
               {activeTab === 'result' && (
-                <div className="p-5 rounded-2xl bg-[#12141F] border border-white/10 space-y-4">
+                <div className="p-5 rounded-xl bg-card border border-border space-y-4 shadow-sm">
                   <div className="flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-purple-400" />
-                    <h3 className="text-sm font-semibold text-white">
+                    <Sparkles className="w-4 h-4 text-primary" />
+                    <h3 className="text-sm font-semibold text-foreground">
                       Финальный результат миссии
                     </h3>
                   </div>
 
                   {currentMission.finalResult ? (
                     <div className="space-y-4">
-                      <div className="p-4 rounded-xl bg-black/30 border border-white/5 text-xs text-slate-200 leading-relaxed">
+                      <div className="p-4 rounded-xl bg-muted/40 border border-border text-xs text-foreground leading-relaxed">
                         {currentMission.finalResult.summary}
                       </div>
 
                       <div>
-                        <h4 className="text-xs font-semibold text-slate-300 mb-2">
+                        <h4 className="text-xs font-semibold text-muted-foreground mb-2">
                           Сохраненные артефакты:
                         </h4>
-                        <pre className="p-3 rounded-xl bg-black/40 border border-white/5 font-mono text-[11px] text-slate-300 overflow-x-auto">
+                        <pre className="p-3 rounded-xl bg-muted/60 border border-border font-mono text-[11px] text-foreground overflow-x-auto">
                           {JSON.stringify(currentMission.finalResult.artifacts, null, 2)}
                         </pre>
                       </div>
 
-                      <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-300 flex items-center gap-2">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                      <div className="p-3 rounded-xl bg-status-success-bg border border-status-success-border text-xs text-status-success flex items-center gap-2">
+                        <CheckCircle2 className="w-4 h-4 text-status-success" />
                         <span>Результат миссии синхронизирован с долговременной памятью Second Brain.</span>
                       </div>
                     </div>
@@ -668,15 +800,15 @@ export default function MissionsPage() {
 
       {/* Модальное окно создания миссии */}
       {isCreating && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#12141F] border border-white/15 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-white/10 pb-3">
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <Target className="w-4 h-4 text-purple-400" /> Новая автономная миссия
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-card border border-border rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl text-card-foreground">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                <Target className="w-4 h-4 text-primary" /> Новая автономная миссия
               </h3>
               <button
                 onClick={() => setIsCreating(false)}
-                className="text-slate-400 hover:text-white"
+                className="text-muted-foreground hover:text-foreground"
               >
                 ✕
               </button>
@@ -684,7 +816,7 @@ export default function MissionsPage() {
 
             <form onSubmit={handleCreateMission} className="space-y-4">
               <div>
-                <label className="text-xs font-semibold text-slate-300 block mb-1">
+                <label className="text-xs font-semibold text-foreground block mb-1">
                   Цель миссии на естественном языке *
                 </label>
                 <textarea
@@ -693,12 +825,12 @@ export default function MissionsPage() {
                   value={newGoal}
                   onChange={(e) => setNewGoal(e.target.value)}
                   placeholder="Опишите задачу (например: Исследовать конкурентов в нише AI workflow, собрать сводную таблицу функций и сформировать отчет)..."
-                  className="w-full p-3 rounded-xl bg-black/40 border border-white/10 text-xs text-white focus:outline-none focus:border-purple-500 transition resize-none"
+                  className="w-full p-3 rounded-xl bg-background border border-border text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring transition resize-none"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-slate-300 block mb-1">
+                <label className="text-xs font-semibold text-foreground block mb-1">
                   Название миссии (опционально)
                 </label>
                 <input
@@ -706,12 +838,12 @@ export default function MissionsPage() {
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
                   placeholder="Анализ конкурентов 2026"
-                  className="w-full p-2.5 rounded-xl bg-black/40 border border-white/10 text-xs text-white focus:outline-none focus:border-purple-500 transition"
+                  className="w-full p-2.5 rounded-xl bg-background border border-border text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring transition"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-slate-300 block mb-1">
+                <label className="text-xs font-semibold text-foreground block mb-1">
                   Бюджет токенов
                 </label>
                 <input
@@ -720,7 +852,7 @@ export default function MissionsPage() {
                   step={5000}
                   value={newBudget}
                   onChange={(e) => setNewBudget(Number(e.target.value))}
-                  className="w-full p-2.5 rounded-xl bg-black/40 border border-white/10 text-xs text-white focus:outline-none focus:border-purple-500 transition font-mono"
+                  className="w-full p-2.5 rounded-xl bg-background border border-border text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring transition font-mono"
                 />
               </div>
 
@@ -728,22 +860,21 @@ export default function MissionsPage() {
                 <button
                   type="button"
                   onClick={() => setIsCreating(false)}
-                  className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs transition"
+                  className="px-4 py-2 rounded-xl bg-muted hover:bg-muted/80 text-muted-foreground text-xs font-medium transition"
                 >
                   Отмена
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold shadow-md transition"
+                  className="px-4 py-2 rounded-xl bg-primary hover:opacity-90 text-primary-foreground text-xs font-semibold shadow-sm transition"
                 >
                   Спланировать и создать
                 </button>
               </div>
             </form>
           </div>
-        </div>
-      )}
       </div>
+    )}
     </div>
   );
 }

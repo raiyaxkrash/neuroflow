@@ -137,12 +137,12 @@ export function EditorToolbar() {
   };
 
   return (
-    <header className="h-14 border-b border-white/10 bg-[#12141F] px-4 flex items-center justify-between z-20">
+    <header className="h-14 border-b border-border bg-card px-4 flex items-center justify-between z-20 text-card-foreground shadow-sm transition-colors">
       {/* Левая часть: кнопка назад и имя */}
       <div className="flex items-center gap-3">
         <Link
           href="/workflows"
-          className="p-1.5 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+          className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
           title="Все сценарии"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -153,26 +153,26 @@ export function EditorToolbar() {
             type="text"
             value={workflowName}
             onChange={(e) => setWorkflowName(e.target.value)}
-            className="bg-transparent font-medium text-slate-100 hover:bg-white/5 focus:bg-[#181B2B] px-2 py-1 rounded-md text-sm border border-transparent focus:border-purple-500/50 outline-none transition-colors"
+            className="bg-transparent font-medium text-foreground hover:bg-muted/50 focus:bg-background px-2 py-1 rounded-md text-sm border border-transparent focus:border-border outline-none transition-colors"
           />
-          <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-white/5 text-slate-400 border border-white/5">
+          <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-muted text-muted-foreground border border-border">
             v{workflowVersion}
           </span>
         </div>
 
         {/* Статус автосохранения */}
-        <div className="flex items-center gap-1.5 text-xs text-slate-400 pl-2">
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground pl-2">
           {isSaving ? (
             <>
-              <Loader2 className="w-3 h-3 animate-spin text-purple-400" />
+              <Loader2 className="w-3 h-3 animate-spin text-primary" />
               <span>Сохранение...</span>
             </>
           ) : isDirty ? (
-            <span className="text-amber-400/80">• Не сохранено</span>
+            <span className="text-status-warning">• Не сохранено</span>
           ) : (
             <>
-              <Check className="w-3 h-3 text-emerald-400" />
-              <span className="text-slate-400">Сохранено</span>
+              <Check className="w-3 h-3 text-status-success" />
+              <span>Сохранено</span>
             </>
           )}
         </div>
@@ -181,11 +181,11 @@ export function EditorToolbar() {
       {/* Правая часть: действия */}
       <div className="flex items-center gap-2">
         {/* Undo / Redo */}
-        <div className="flex items-center bg-[#181B2B] border border-white/5 rounded-lg p-0.5">
+        <div className="flex items-center bg-muted/60 border border-border rounded-lg p-0.5">
           <button
             onClick={undo}
             disabled={past.length === 0}
-            className="p-1.5 rounded hover:bg-white/10 text-slate-400 hover:text-white disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+            className="p-1.5 rounded hover:bg-background text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
             title="Отменить (Ctrl+Z)"
           >
             <RotateCcw className="w-3.5 h-3.5" />
@@ -193,7 +193,7 @@ export function EditorToolbar() {
           <button
             onClick={redo}
             disabled={future.length === 0}
-            className="p-1.5 rounded hover:bg-white/10 text-slate-400 hover:text-white disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+            className="p-1.5 rounded hover:bg-background text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
             title="Повторить (Ctrl+Y)"
           >
             <RotateCw className="w-3.5 h-3.5" />
@@ -203,10 +203,10 @@ export function EditorToolbar() {
         {/* AI Генератор воркфлоу */}
         <button
           onClick={() => setIsAiModalOpen(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-500/10 border border-purple-500/30 text-purple-300 hover:bg-purple-500/20 text-xs font-medium transition-colors cursor-pointer"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-secondary hover:opacity-90 border border-border text-foreground text-xs font-medium transition-opacity cursor-pointer shadow-sm"
           title="Сгенерировать воркфлоу с помощью ИИ"
         >
-          <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+          <Sparkles className="w-3.5 h-3.5 text-primary" />
           <span>AI Генератор</span>
         </button>
 
@@ -214,7 +214,7 @@ export function EditorToolbar() {
         <button
           onClick={handleSave}
           disabled={isSaving || !isDirty}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#181B2B] border border-white/10 text-xs font-medium text-slate-200 hover:bg-white/10 disabled:opacity-50 transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted hover:bg-muted/80 border border-border text-xs font-medium text-foreground disabled:opacity-50 transition-colors shadow-sm"
         >
           <Save className="w-3.5 h-3.5" />
           <span>Сохранить</span>
@@ -224,7 +224,7 @@ export function EditorToolbar() {
         <button
           onClick={handleExecute}
           disabled={isExecuting}
-          className="flex items-center gap-2 px-4 py-1.5 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-semibold shadow-lg shadow-purple-600/20 disabled:opacity-60 transition-all cursor-pointer"
+          className="flex items-center gap-2 px-4 py-1.5 rounded-lg bg-primary hover:opacity-90 text-primary-foreground text-xs font-semibold shadow-sm disabled:opacity-60 transition-opacity cursor-pointer"
         >
           {isExecuting ? (
             <>

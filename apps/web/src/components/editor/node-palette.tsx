@@ -457,19 +457,19 @@ export function NodePalette() {
   };
 
   return (
-    <aside className="w-72 border-r border-white/10 bg-[#12141F] flex flex-col h-full select-none z-10">
-      <div className="p-4 border-b border-white/5 space-y-3">
-        <div className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
+    <aside className="w-72 border-r border-border bg-card flex flex-col h-full select-none z-10 text-card-foreground shadow-sm transition-colors">
+      <div className="p-4 border-b border-border space-y-3">
+        <div className="text-xs font-semibold text-foreground uppercase tracking-wider">
           Библиотека узлов
         </div>
         <div className="relative">
-          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+          <Search className="w-3.5 h-3.5 text-muted-foreground absolute left-2.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             placeholder="Поиск блоков..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-[#181B2B] text-xs text-slate-200 pl-8 pr-3 py-1.5 rounded-lg border border-white/5 focus:border-purple-500/50 outline-none transition-colors"
+            className="w-full bg-background text-xs text-foreground placeholder:text-muted-foreground pl-8 pr-3 py-1.5 rounded-lg border border-border focus:ring-1 focus:ring-ring outline-none transition-colors"
           />
         </div>
 
@@ -481,8 +481,8 @@ export function NodePalette() {
               onClick={() => setSelectedCategory(cat.id)}
               className={`px-2 py-0.5 rounded-md text-[10px] font-medium whitespace-nowrap transition-colors ${
                 selectedCategory === cat.id
-                  ? 'bg-purple-600 text-white'
-                  : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-slate-200'
+                  ? 'bg-primary text-primary-foreground font-semibold'
+                  : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground'
               }`}
             >
               {cat.label}
@@ -499,19 +499,19 @@ export function NodePalette() {
             draggable
             onDragStart={(e) => onDragStart(e, node.type)}
             onClick={() => addNode(node.type)}
-            className="group flex items-start gap-3 p-2.5 rounded-xl bg-[#181B2B]/60 hover:bg-[#181B2B] border border-white/5 hover:border-purple-500/30 cursor-grab active:cursor-grabbing transition-all hover:shadow-md"
+            className="group flex items-start gap-3 p-2.5 rounded-xl bg-muted/40 hover:bg-muted border border-border hover:border-highlight/60 cursor-grab active:cursor-grabbing transition-all hover:shadow-sm"
           >
-            <div className="w-8 h-8 rounded-lg bg-[#12141F] border border-white/10 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+            <div className="w-8 h-8 rounded-lg bg-card border border-border flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
               {node.icon}
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-slate-100 group-hover:text-purple-300 transition-colors">
+                <span className="text-xs font-medium text-foreground group-hover:text-primary transition-colors">
                   {node.name}
                 </span>
-                <Plus className="w-3.5 h-3.5 text-slate-500 group-hover:text-purple-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                <Plus className="w-3.5 h-3.5 text-muted-foreground group-hover:text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
-              <p className="text-[11px] text-slate-400 mt-0.5 line-clamp-2 leading-relaxed">
+              <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2 leading-relaxed">
                 {node.description}
               </p>
             </div>
@@ -522,13 +522,13 @@ export function NodePalette() {
       {/* AI Copilot активатор */}
       <div
         onClick={() => setActiveInspectorTab('copilot')}
-        className="p-3 m-3 rounded-xl bg-purple-950/20 hover:bg-purple-950/40 border border-purple-500/20 hover:border-purple-500/40 cursor-pointer transition-all"
+        className="p-3 m-3 rounded-xl bg-secondary/60 hover:bg-secondary border border-border cursor-pointer transition-all shadow-sm"
       >
-        <div className="flex items-center gap-1.5 text-xs font-semibold text-purple-300 mb-1">
-          <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+        <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground mb-1">
+          <Sparkles className="w-3.5 h-3.5 text-primary" />
           <span>AI Workflow Copilot</span>
         </div>
-        <p className="text-[10px] text-slate-400 leading-normal">
+        <p className="text-[10px] text-muted-foreground leading-normal">
           Нажмите, чтобы открыть чат с ассистентом для модификации и объяснения графа.
         </p>
       </div>

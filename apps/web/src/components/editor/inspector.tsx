@@ -163,9 +163,9 @@ export function Inspector() {
   };
 
   return (
-    <aside className="w-84 border-l border-white/10 bg-[#12141F] flex flex-col h-full z-10">
+    <aside className="w-84 border-l border-border bg-card flex flex-col h-full z-10 text-card-foreground shadow-sm transition-colors">
       {/* Шапка инспектора */}
-      <div className="p-4 border-b border-white/5 flex items-center justify-between">
+      <div className="p-4 border-b border-border flex items-center justify-between">
         <div className="min-w-0 flex-1">
           {selectedNode ? (
             <>
@@ -173,35 +173,35 @@ export function Inspector() {
                 type="text"
                 value={label}
                 onChange={(e) => updateNodeLabel(selectedNode.id, e.target.value)}
-                className="bg-transparent font-medium text-sm text-slate-100 hover:bg-white/5 focus:bg-[#181B2B] px-1.5 py-0.5 rounded border border-transparent focus:border-purple-500/50 outline-none w-full"
+                className="bg-transparent font-medium text-sm text-foreground hover:bg-muted/50 focus:bg-background px-1.5 py-0.5 rounded border border-transparent focus:border-border outline-none w-full transition-colors"
               />
-              <div className="text-[10px] text-slate-400 font-mono pl-1.5">
+              <div className="text-[10px] text-muted-foreground font-mono pl-1.5">
                 ID: {selectedNode.id}
               </div>
             </>
           ) : (
             <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-purple-400" />
-              <div className="font-semibold text-sm text-slate-100">AI Workflow Copilot</div>
+              <Sparkles className="w-4 h-4 text-primary" />
+              <div className="font-semibold text-sm text-foreground">AI Workflow Copilot</div>
             </div>
           )}
         </div>
         <button
           onClick={() => setSelectedNodeId(null)}
-          className="p-1 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white"
+          className="p-1 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
         >
           <X className="w-4 h-4" />
         </button>
       </div>
 
       {/* Вкладки: Параметры / Данные / Copilot */}
-      <div className="flex border-b border-white/5 px-2 bg-[#181B2B]/40">
+      <div className="flex border-b border-border px-2 bg-muted/30">
         <button
           onClick={() => setActiveTab('parameters')}
           className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium border-b-2 transition-colors ${
             activeTab === 'parameters'
-              ? 'border-purple-500 text-purple-300'
-              : 'border-transparent text-slate-400 hover:text-slate-200'
+              ? 'border-highlight text-foreground font-semibold'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
           }`}
         >
           <Settings2 className="w-3.5 h-3.5" />
@@ -211,8 +211,8 @@ export function Inspector() {
           onClick={() => setActiveTab('data')}
           className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium border-b-2 transition-colors ${
             activeTab === 'data'
-              ? 'border-purple-500 text-purple-300'
-              : 'border-transparent text-slate-400 hover:text-slate-200'
+              ? 'border-highlight text-foreground font-semibold'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
           }`}
         >
           <Database className="w-3.5 h-3.5" />
@@ -222,11 +222,11 @@ export function Inspector() {
           onClick={() => setActiveTab('copilot')}
           className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium border-b-2 transition-colors ${
             activeTab === 'copilot'
-              ? 'border-purple-500 text-purple-300'
-              : 'border-transparent text-slate-400 hover:text-slate-200'
+              ? 'border-highlight text-foreground font-semibold'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
           }`}
         >
-          <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+          <Sparkles className="w-3.5 h-3.5 text-primary" />
           <span>AI Copilot</span>
         </button>
       </div>

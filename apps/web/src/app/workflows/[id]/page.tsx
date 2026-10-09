@@ -67,8 +67,8 @@ export default function WorkflowEditorPage() {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen w-screen items-center justify-center bg-[#090A0F] text-slate-300 gap-3">
-        <Loader2 className="w-6 h-6 animate-spin text-purple-500" />
+      <div className="flex h-screen w-screen items-center justify-center bg-background text-foreground gap-3">
+        <Loader2 className="w-6 h-6 animate-spin text-primary" />
         <span className="text-sm font-medium">Загрузка редактора сценария...</span>
       </div>
     );
@@ -76,15 +76,15 @@ export default function WorkflowEditorPage() {
 
   if (error || !workflow) {
     return (
-      <div className="flex h-screen w-screen items-center justify-center bg-[#090A0F] text-slate-300">
-        <div className="text-center p-8 bg-[#12141F] rounded-2xl border border-white/10 max-w-md">
-          <div className="text-rose-400 font-semibold mb-2">Не удалось открыть воркфлоу</div>
-          <p className="text-xs text-slate-400 mb-4">
+      <div className="flex h-screen w-screen items-center justify-center bg-background text-foreground">
+        <div className="text-center p-8 bg-card rounded-2xl border border-border max-w-md shadow-xl">
+          <div className="text-status-error font-semibold mb-2">Не удалось открыть воркфлоу</div>
+          <p className="text-xs text-muted-foreground mb-4">
             {(error as any)?.message || 'Сценарий не найден или был удален'}
           </p>
           <a
             href="/workflows"
-            className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-xs font-semibold"
+            className="px-4 py-2 bg-primary hover:opacity-90 text-primary-foreground rounded-lg text-xs font-semibold"
           >
             Вернуться к списку
           </a>
@@ -94,7 +94,7 @@ export default function WorkflowEditorPage() {
   }
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#090A0F]">
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-background text-foreground">
       <EditorToolbar />
 
       <div className="flex-1 flex overflow-hidden relative">

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { Providers } from '@/components/providers';
+import { AppShell } from '@/components/layout/app-shell';
 
 export const metadata: Metadata = {
   title: 'NeuroFlow — Next-Gen Automation Platform',
@@ -13,9 +14,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ru" className="dark">
-      <body className="antialiased bg-[#090A0F] text-[#F8FAFC]">
-        <Providers>{children}</Providers>
+    <html lang="ru" suppressHydrationWarning>
+      <body className="antialiased bg-background text-foreground selection:bg-highlight selection:text-highlight-foreground">
+        <Providers>
+          <AppShell>{children}</AppShell>
+        </Providers>
       </body>
     </html>
   );

@@ -51,7 +51,7 @@ export function WorkflowCanvas() {
   );
 
   return (
-    <div ref={reactFlowWrapper} className="w-full h-full relative select-none bg-[#0D0E15]">
+    <div ref={reactFlowWrapper} className="w-full h-full relative select-none bg-background">
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -68,7 +68,7 @@ export function WorkflowCanvas() {
         snapGrid={[20, 20]}
         defaultEdgeOptions={{
           type: 'smoothstep',
-          style: { stroke: 'rgba(255, 255, 255, 0.25)', strokeWidth: 2 },
+          style: { stroke: 'var(--border-strong)', strokeWidth: 2 },
         }}
         proOptions={{ hideAttribution: true }}
       >
@@ -76,22 +76,22 @@ export function WorkflowCanvas() {
           variant={BackgroundVariant.Dots}
           gap={20}
           size={1.5}
-          color="rgba(255, 255, 255, 0.08)"
+          color="var(--border)"
         />
         <Controls
-          className="!bg-[#12141F] !border !border-white/10 !rounded-lg !overflow-hidden [&>button]:!bg-transparent [&>button]:!border-white/5 [&>button]:!text-slate-300 hover:[&>button]:!bg-white/10"
+          className="!bg-card !border !border-border !rounded-lg !overflow-hidden [&>button]:!bg-transparent [&>button]:!border-border [&>button]:!text-muted-foreground hover:[&>button]:!bg-muted"
         />
         <MiniMap
           nodeColor={(node) => {
             const type = (node.data?.type as string) || '';
-            if (type === 'manual-trigger') return '#8B5CF6';
-            if (type === 'http-request') return '#06B6D4';
-            if (type === 'condition') return '#F59E0B';
-            if (type === 'output') return '#10B981';
-            return '#6366F1';
+            if (type === 'manual-trigger') return 'var(--primary)';
+            if (type === 'http-request') return 'var(--status-info)';
+            if (type === 'condition') return 'var(--status-warning)';
+            if (type === 'output') return 'var(--status-success)';
+            return 'var(--primary)';
           }}
-          className="!bg-[#12141F] !border !border-white/10 !rounded-lg !overflow-hidden"
-          maskColor="rgba(13, 14, 21, 0.8)"
+          className="!bg-card !border !border-border !rounded-lg !overflow-hidden"
+          maskColor="rgba(0, 0, 0, 0.4)"
         />
       </ReactFlow>
     </div>
