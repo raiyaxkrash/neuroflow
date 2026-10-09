@@ -8,7 +8,7 @@ import {
 import { getNodeRegistry } from '@neuroflow/nodes';
 import { WorkflowValidator } from './validator.js';
 import { WorkflowExecutionContext } from './context.js';
-import { getDatabase, executions, nodeExecutions, eq } from '@neuroflow/database';
+import { getDatabase, executions, nodeExecutions, eq, and } from '@neuroflow/database';
 
 export interface WorkflowExecutorEvents {
   onExecutionStart?: (executionId: string) => Promise<void> | void;
@@ -24,6 +24,7 @@ export interface ExecutionOptions {
   workflowId: string;
   graph: WorkflowGraph;
   initialPayload?: any;
+  approvalDecisions?: Record<string, any>;
   triggerNodeId?: string;
   signal?: AbortSignal;
   events?: WorkflowExecutorEvents;
@@ -43,6 +44,7 @@ export class WorkflowExecutor {
       workflowId,
       graph,
       initialPayload = {},
+      approvalDecisions,
       triggerNodeId,
       signal,
       events = {},
@@ -91,13 +93,29 @@ export class WorkflowExecutor {
       };
     }
 
-    // 2. Обновление статуса запуска в БД на running
+    // 2. Обновление или создание статуса запуска в БД на running
     if (saveToDatabase && db) {
       try {
-        await db.update(executions).set({
-          status: ExecutionStatus.RUNNING,
-          startedAt: new Date(),
-        }).where(eq(executions.id, executionId));
+        const [existingExec] = await db
+          .select()
+          .from(executions)
+          .where(eq(executions.id, executionId))
+          .limit(1);
+
+        if (!existingExec) {
+          await db.insert(executions).values({
+            id: executionId,
+            workflowId,
+            status: ExecutionStatus.RUNNING,
+            startedAt: new Date(startTime),
+            inputPayload: initialPayload,
+          });
+        } else {
+          await db.update(executions).set({
+            status: ExecutionStatus.RUNNING,
+            startedAt: new Date(),
+          }).where(eq(executions.id, executionId));
+        }
       } catch {
         // Ошибка БД не блокирует выполнение
       }
@@ -148,9 +166,47 @@ export class WorkflowExecutor {
     const skippedNodes = new Set<string>();
     const activeIncomingData = new Map<string, any>(); // Данные, переданные в узел по ребру
 
-    // Начальные входные данные для стартовых узлов
+    // Начальные входные данные для стартовых узлов (очищенные от служебных системных полей)
+    const startPayload = typeof initialPayload === 'object' && initialPayload !== null
+      ? { ...initialPayload }
+      : initialPayload;
+    if (typeof startPayload === 'object' && startPayload !== null) {
+      delete startPayload.approvalDecisions;
+    }
+
     for (const sn of startNodes) {
-      activeIncomingData.set(sn.id, initialPayload);
+      activeIncomingData.set(sn.id, startPayload);
+    }
+
+    // Восстановление состояния (Durable Execution & Checkpointing):
+    // если сценарий возобновляется после паузы/сбоя, загружаем уже успешно выполненные узлы
+    if (saveToDatabase && db) {
+      try {
+        const completedRows = await db
+          .select()
+          .from(nodeExecutions)
+          .where(
+            and(
+              eq(nodeExecutions.executionId, executionId),
+              eq(nodeExecutions.status, NodeExecutionStatus.SUCCESS)
+            )
+          );
+
+        for (const row of completedRows) {
+          executedNodes.add(row.nodeId);
+          context.setNodeResult(row.nodeId, row.outputData, NodeExecutionStatus.SUCCESS);
+
+          const outEdges = outgoing.get(row.nodeId) || [];
+          for (const edge of outEdges) {
+            activeIncomingData.set(edge.target, row.outputData);
+            if (!executedNodes.has(edge.target) && !queue.includes(edge.target)) {
+              queue.push(edge.target);
+            }
+          }
+        }
+      } catch {
+        // Игнорируем в автономных тестах
+      }
     }
 
     let executionError: string | undefined = undefined;
@@ -201,11 +257,20 @@ export class WorkflowExecutor {
       }
 
       try {
+        const workflowCtx = {
+          ...context.getAllOutputs(),
+          executionId,
+          workflowId,
+          ...((approvalDecisions || initialPayload?.approvalDecisions)
+            ? { approvalDecisions: approvalDecisions || initialPayload?.approvalDecisions }
+            : {}),
+        };
+
         const output = await nodeDef.execute({
           nodeId: currentId,
           parameters: node.data?.parameters || {},
           inputData,
-          workflowContext: context.getAllOutputs(),
+          workflowContext: workflowCtx,
           signal,
         });
 
@@ -222,7 +287,7 @@ export class WorkflowExecutor {
                 outputData: output.outputData,
                 finishedAt: new Date(),
                 durationMs: nodeDurationMs,
-              }).where(eq(nodeExecutions.executionId, executionId));
+              }).where(and(eq(nodeExecutions.executionId, executionId), eq(nodeExecutions.nodeId, currentId)));
 
               await db.update(executions).set({
                 status: ExecutionStatus.WAITING_FOR_APPROVAL,
@@ -246,7 +311,7 @@ export class WorkflowExecutor {
           context.finalOutput = output.outputData;
         }
 
-        // Обновление статуса узла в БД
+        // Обновление статуса узла в БД с точным указанием nodeId
         if (saveToDatabase && db) {
           try {
             await db.update(nodeExecutions).set({
@@ -254,7 +319,7 @@ export class WorkflowExecutor {
               outputData: output.outputData,
               finishedAt: new Date(),
               durationMs: nodeDurationMs,
-            }).where(eq(nodeExecutions.executionId, executionId));
+            }).where(and(eq(nodeExecutions.executionId, executionId), eq(nodeExecutions.nodeId, currentId)));
           } catch {
             // Игнорируем
           }
@@ -296,7 +361,7 @@ export class WorkflowExecutor {
               error: errMessage,
               finishedAt: new Date(),
               durationMs: nodeDurationMs,
-            }).where(eq(nodeExecutions.executionId, executionId));
+            }).where(and(eq(nodeExecutions.executionId, executionId), eq(nodeExecutions.nodeId, currentId)));
           } catch {
             // Игнорируем
           }

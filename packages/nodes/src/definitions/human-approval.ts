@@ -1,7 +1,36 @@
 import crypto from 'node:crypto';
 import { BaseNodeDef, NodeExecutionContext, NodeExecutionOutput } from '../base.js';
-import { NodeCategory, WorkflowPortDefinition, HumanApprovalParametersSchema } from '@neuroflow/shared';
+import {
+  NodeCategory,
+  WorkflowPortDefinition,
+  HumanApprovalParametersSchema,
+  calculateActionFingerprint,
+  canonicalJson,
+} from '@neuroflow/shared';
 import { getDatabase, approvals, eq } from '@neuroflow/database';
+
+function sanitizePayloadForFingerprint(data: any): any {
+  if (data === null || typeof data !== 'object') {
+    return data;
+  }
+  if (Array.isArray(data)) {
+    return data.map(sanitizePayloadForFingerprint);
+  }
+  const clean: Record<string, any> = {};
+  for (const [key, value] of Object.entries(data)) {
+    // Исключаем динамические системные поля выполнения и метаданные возобновления
+    if (key === 'triggeredAt' || key === 'timestamp' || key === 'approvalDecisions' || key === 'executionId') {
+      continue;
+    }
+    if (key === '__handoffMetadata' && typeof value === 'object' && value !== null) {
+      const { timestamp, ...restHandoff } = value as any;
+      clean[key] = restHandoff;
+      continue;
+    }
+    clean[key] = sanitizePayloadForFingerprint(value);
+  }
+  return clean;
+}
 
 export class HumanApprovalNode extends BaseNodeDef {
   type = 'human-approval';
@@ -34,24 +63,42 @@ export class HumanApprovalNode extends BaseNodeDef {
     const inputData = (context as any).inputData ?? (context as any).input ?? {};
     const title = params.actionTitle || this.defaultParameters.actionTitle;
     const consequences = params.consequences || this.defaultParameters.consequences;
+    const workflowCtx = context.workflowContext || {};
+    const executionId = (context as any).executionId || (context as any).context?.executionId || workflowCtx.executionId || '';
+    const toolName = inputData.toolName || title;
 
-    // 1. Вычисляем криптографический отпечаток действия (Action Fingerprint)
-    const payloadString = JSON.stringify(inputData);
-    const actionFingerprint = crypto
-      .createHash('sha256')
-      .update(`${title}:${consequences}:${payloadString}`)
-      .digest('hex');
+    // 1. Вычисляем детерминированный криптографический отпечаток действия (Action Fingerprint)
+    const cleanPayload = typeof inputData === 'object' && inputData !== null
+      ? sanitizePayloadForFingerprint(inputData)
+      : inputData;
+
+    const actionFingerprint = calculateActionFingerprint({
+      executionId,
+      nodeId: context.nodeId,
+      toolName,
+      payload: cleanPayload,
+    });
 
     // 2. Проверяем, было ли уже принято решение оператором (при возобновлении выполнения)
-    const workflowCtx = context.workflowContext || {};
     const decisions = workflowCtx.approvalDecisions || {};
     const existingDecision = decisions[context.nodeId] || decisions[actionFingerprint];
 
     if (existingDecision) {
-      const isApproved = existingDecision.status === 'approved' || existingDecision.decision === 'approved';
+      // Защита от подмены аргументов: сверяем отпечаток
+      if (
+        existingDecision.actionFingerprint &&
+        existingDecision.actionFingerprint !== actionFingerprint
+      ) {
+        throw new Error(
+          `[Human Approval Security Alert] Несоответствие отпечатка действия: аргументы были изменены после решения оператора (${actionFingerprint} != ${existingDecision.actionFingerprint}). Выполнение заблокировано.`
+        );
+      }
+
+      const isApproved =
+        existingDecision.status === 'approved' || existingDecision.decision === 'approved';
       const port = isApproved ? 'approved' : 'rejected';
 
-      context.log?.(`[Human Approval] Получено решение оператора: ${port.toUpperCase()}`);
+      context.log?.(`[Human Approval] Применено решение оператора: ${port.toUpperCase()}`);
 
       return {
         outputData: {
@@ -62,14 +109,13 @@ export class HumanApprovalNode extends BaseNodeDef {
           actionFingerprint,
           originalInput: inputData,
         },
-        output: inputData,
+        output: isApproved ? inputData : null, // Отклоненное действие никогда не передает данные для выполнения
         selectedPort: port,
       };
     }
 
     // 3. Создаем запись запроса на подтверждение в БД (если доступна)
     let approvalId = crypto.randomUUID();
-    const executionId = (context as any).executionId || workflowCtx.executionId;
 
     try {
       if (executionId) {
@@ -83,7 +129,7 @@ export class HumanApprovalNode extends BaseNodeDef {
             executionId,
             nodeId: context.nodeId,
             agentId: inputData.agentName || 'Agent',
-            toolName: inputData.toolName || title,
+            toolName,
             toolArguments: typeof inputData === 'object' ? inputData : { data: inputData },
             consequences,
             actionFingerprint,
@@ -102,7 +148,7 @@ export class HumanApprovalNode extends BaseNodeDef {
 
     context.log?.(`[Human Approval] Запрос на подтверждение ${approvalId} ожидает оператора.`);
 
-    // 4. Сигнализируем движку выполнения о переходе в статус ожидания
+    // 4. Сигнализируем движку выполнения о переходе в статус ожидания оператора
     return {
       outputData: {
         waitingForApproval: true,
@@ -113,7 +159,7 @@ export class HumanApprovalNode extends BaseNodeDef {
         inputData,
       },
       output: null,
-      selectedPort: 'approved', // Дефолтный порт при одобрении
+      selectedPort: 'approved',
     };
   }
 }

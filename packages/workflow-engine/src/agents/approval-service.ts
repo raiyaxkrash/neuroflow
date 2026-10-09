@@ -7,8 +7,15 @@ import {
   eq,
   and,
 } from '@neuroflow/database';
-import { ExecutionStatus } from '@neuroflow/shared';
+import { ExecutionStatus, canonicalJson } from '@neuroflow/shared';
 import { WorkflowExecutor } from '../executor.js';
+
+export class ApprovalConflictError extends Error {
+  constructor(message: string) {
+    super(`[Approval Conflict] ${message}`);
+    this.name = 'ApprovalConflictError';
+  }
+}
 
 export interface ReviewApprovalOptions {
   approvalId: string;
@@ -67,7 +74,8 @@ export class ApprovalService {
   }
 
   /**
-   * Рецензирование запроса: одобрение или отклонение действия.
+   * Атомарное рецензирование запроса: одобрение или отклонение действия.
+   * Гарантирует строгую защиту от конкурентных запросов (race conditions) и повторного применения.
    */
   public static async review(options: ReviewApprovalOptions): Promise<{
     success: boolean;
@@ -78,30 +86,38 @@ export class ApprovalService {
     const { approvalId, reviewerId, decision, reason } = options;
     const db = getDatabase();
 
-    const [approvalRecord] = await db
+    // 1. Проверяем существование записи и срок действия
+    const [existing] = await db
       .select()
       .from(approvals)
       .where(eq(approvals.id, approvalId))
       .limit(1);
 
-    if (!approvalRecord) {
+    if (!existing) {
       throw new Error(`Запрос на подтверждение с ID "${approvalId}" не найден.`);
     }
 
-    if (approvalRecord.status !== 'pending') {
-      throw new Error(`Запрос на подтверждение уже был обработан со статусом "${approvalRecord.status}".`);
+    if (existing.status !== 'pending') {
+      throw new ApprovalConflictError(
+        `Запрос на подтверждение уже обработан со статусом "${existing.status}". Повторная обработка запрещена.`
+      );
     }
 
-    // Проверка срока жизни запроса
-    if (approvalRecord.expiresAt && new Date(approvalRecord.expiresAt) < new Date()) {
+    if (existing.expiresAt && new Date(existing.expiresAt) < new Date()) {
+      // Атомарно помечаем как просроченный, если еще pending
       await db
         .update(approvals)
-        .set({ status: 'rejected', rejectionReason: 'Истек срок ожидания подтверждения (timeout).' })
-        .where(eq(approvals.id, approvalId));
+        .set({
+          status: 'rejected',
+          rejectionReason: 'Истек срок ожидания подтверждения (timeout).',
+          updatedAt: new Date(),
+        })
+        .where(and(eq(approvals.id, approvalId), eq(approvals.status, 'pending')));
+
       throw new Error('Срок ожидания подтверждения данного действия истек.');
     }
 
-    // Обновляем статус подтверждения
+    // 2. АТОМАРНЫЙ UPDATE с условием status = 'pending' для предотвращения race condition
     const [updated] = await db
       .update(approvals)
       .set({
@@ -111,14 +127,27 @@ export class ApprovalService {
         rejectionReason: reason || null,
         updatedAt: new Date(),
       })
-      .where(eq(approvals.id, approvalId))
+      .where(and(eq(approvals.id, approvalId), eq(approvals.status, 'pending')))
       .returning();
 
-    // Загружаем запуск и граф воркфлоу для возобновления выполнения
+    if (!updated) {
+      // Параллельный процесс успел изменить статус миллисекундами ранее
+      const [concurrentState] = await db
+        .select()
+        .from(approvals)
+        .where(eq(approvals.id, approvalId))
+        .limit(1);
+
+      throw new ApprovalConflictError(
+        `Конкурентный запрос: подтверждение уже было переведено в статус "${concurrentState?.status}".`
+      );
+    }
+
+    // 3. Загружаем запуск и граф воркфлоу для возобновления выполнения
     const [execRow] = await db
       .select()
       .from(executions)
-      .where(eq(executions.id, approvalRecord.executionId))
+      .where(eq(executions.id, updated.executionId))
       .limit(1);
 
     if (!execRow) {
@@ -135,25 +164,26 @@ export class ApprovalService {
       return { success: true, approval: updated, executionResumed: false };
     }
 
-    // Возобновляем выполнение сценария с переданным решением
+    // 4. Формируем контекст возобновления выполнения
     const initialPayload = {
       ...(typeof execRow.inputPayload === 'object' ? (execRow.inputPayload as any) : {}),
       approvalDecisions: {
-        [approvalRecord.nodeId]: {
+        [updated.nodeId]: {
           status: decision,
           reviewer: reviewerId,
           reason,
-          actionFingerprint: approvalRecord.actionFingerprint,
+          actionFingerprint: updated.actionFingerprint,
         },
-        [approvalRecord.actionFingerprint]: {
+        [updated.actionFingerprint]: {
           status: decision,
           reviewer: reviewerId,
           reason,
+          actionFingerprint: updated.actionFingerprint,
         },
       },
     };
 
-    // Запускаем возобновление в фоне, не блокируя HTTP ответ
+    // Запускаем возобновление в фоне с продолжением исполнения
     WorkflowExecutor.execute({
       executionId: execRow.id,
       workflowId: wfRow.id,

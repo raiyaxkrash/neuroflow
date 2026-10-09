@@ -38,10 +38,7 @@ export async function mcpRoutes(fastify: FastifyInstance) {
     }
   };
 
-  /**
-   * GET /api/mcp/servers - Список всех MCP серверов пользователя
-   */
-  fastify.get('/servers', { preHandler: authenticate }, async (request: any) => {
+  const listServersHandler = async (request: any) => {
     const db = getDatabase();
     const rows = await db
       .select()
@@ -79,12 +76,9 @@ export async function mcpRoutes(fastify: FastifyInstance) {
         updatedAt: r.updatedAt,
       };
     });
-  });
+  };
 
-  /**
-   * POST /api/mcp/servers - Создание нового MCP сервера
-   */
-  fastify.post('/servers', { preHandler: authenticate }, async (request: any, reply) => {
+  const createServerHandler = async (request: any, reply: any) => {
     const parseRes = CreateMCPServerSchema.safeParse(request.body);
     if (!parseRes.success) {
       return reply.status(400).send({
@@ -105,7 +99,7 @@ export async function mcpRoutes(fastify: FastifyInstance) {
       } catch (err: any) {
         return reply.status(400).send({ error: 'SecurityError', message: err.message });
       }
-    } else if (data.transport === 'sse' || data.transport === 'http') {
+    } else if (data.transport === 'sse' || data.transport === 'http' || (data.transport as string) === 'streamable-http') {
       if (!data.serverUrl) {
         return reply.status(400).send({ error: 'ValidationError', message: 'Для сетевого транспорта требуется указать serverUrl.' });
       }
@@ -144,7 +138,19 @@ export async function mcpRoutes(fastify: FastifyInstance) {
       .returning();
 
     return reply.status(201).send(created);
-  });
+  };
+
+  /**
+   * GET /api/mcp и GET /api/mcp/servers - Список всех MCP серверов пользователя
+   */
+  fastify.get('/', { preHandler: authenticate }, listServersHandler);
+  fastify.get('/servers', { preHandler: authenticate }, listServersHandler);
+
+  /**
+   * POST /api/mcp и POST /api/mcp/servers - Создание нового MCP сервера
+   */
+  fastify.post('/', { preHandler: authenticate }, createServerHandler);
+  fastify.post('/servers', { preHandler: authenticate }, createServerHandler);
 
   /**
    * POST /api/mcp/servers/:id/test - Проверка связи с сервером и интроспекция возможностей

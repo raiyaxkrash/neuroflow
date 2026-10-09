@@ -2,8 +2,7 @@ import { describe, it, expect } from 'vitest';
 import crypto from 'node:crypto';
 import { HumanApprovalNode } from '../packages/nodes/src/definitions/human-approval.js';
 import { WorkflowExecutor } from '../packages/workflow-engine/src/executor.js';
-import { ExecutionStatus } from '@neuroflow/shared';
-import { WorkflowGraph } from '@neuroflow/shared';
+import { ExecutionStatus, WorkflowGraph, calculateActionFingerprint } from '@neuroflow/shared';
 
 describe('Human-in-the-Loop & Approval System', () => {
   it('HumanApprovalNode: генерирует sha256 fingerprint и возвращает waitingForApproval: true', async () => {
@@ -34,11 +33,13 @@ describe('Human-in-the-Loop & Approval System', () => {
     expect(res.outputData.waitingForApproval).toBe(true);
     expect(res.outputData.actionFingerprint).toBeDefined();
 
-    // Проверяем корректность вычисления отпечатка
-    const expectedHash = crypto
-      .createHash('sha256')
-      .update(`Удаление базы данных:Необратимое удаление всех таблиц:${JSON.stringify(inputPayload)}`)
-      .digest('hex');
+    // Проверяем корректность вычисления отпечатка через детерминированный канонический алгоритм
+    const expectedHash = calculateActionFingerprint({
+      executionId: 'exec_approval_1',
+      nodeId: 'approval_node_1',
+      toolName: 'Удаление базы данных',
+      payload: inputPayload,
+    });
 
     expect(res.outputData.actionFingerprint).toBe(expectedHash);
   });

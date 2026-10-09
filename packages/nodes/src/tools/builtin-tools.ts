@@ -177,13 +177,36 @@ export const BUILT_IN_TOOLS: BuiltInToolDefinition[] = [
 
       const validatedUrl = await validateUrlForSSRF(url);
 
-      const response = await fetch(validatedUrl.toString(), {
-        method: 'GET',
-        headers: {
-          'User-Agent': 'NeuroFlow-Agent/1.0',
-          Accept: 'application/json, text/plain, */*',
-        },
-      });
+      let currentUrl = validatedUrl.toString();
+      let response: Response | null = null;
+      let redirectCount = 0;
+      const maxRedirects = 5;
+
+      while (redirectCount <= maxRedirects) {
+        response = await fetch(currentUrl, {
+          method: 'GET',
+          headers: {
+            'User-Agent': 'NeuroFlow-Agent/1.0',
+            Accept: 'application/json, text/plain, */*',
+          },
+          redirect: 'manual',
+        });
+
+        if ([301, 302, 303, 307, 308].includes(response.status)) {
+          const locationHeader = response.headers.get('location');
+          if (!locationHeader) break;
+          redirectCount++;
+          const nextUrl = new URL(locationHeader, currentUrl).toString();
+          const validatedNext = await validateUrlForSSRF(nextUrl);
+          currentUrl = validatedNext.toString();
+          continue;
+        }
+        break;
+      }
+
+      if (!response) {
+        throw new Error('Не удалось получить ответ сервера.');
+      }
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);

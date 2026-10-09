@@ -155,6 +155,34 @@ export const CustomNode = memo(({ id, data, selected }: NodeProps) => {
         </div>
       )}
 
+      {/* Список разрешений инструментов для AI Agent */}
+      {nodeType === 'ai-agent' && (
+        <div className="mb-2 px-2 py-1.5 rounded bg-[#181B2B] border border-cyan-500/20 flex flex-col gap-1 text-[10px]">
+          <div className="flex items-center justify-between text-slate-400">
+            <span className="text-cyan-400 font-medium">Разрешения (Tools):</span>
+            <span className="font-mono text-[9px] text-slate-400">
+              {((data.parameters as any)?.allowedTools?.length || 0)} разрешено
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {((data.parameters as any)?.allowedTools?.length > 0) ? (
+              (data.parameters as any).allowedTools.slice(0, 3).map((t: string, idx: number) => (
+                <span key={idx} className="px-1.5 py-0.5 rounded bg-cyan-950/60 text-cyan-300 border border-cyan-800/40 text-[9px] font-mono">
+                  {t}
+                </span>
+              ))
+            ) : (
+              <span className="text-zinc-500 italic text-[9px]">Без внешних инструментов</span>
+            )}
+            {((data.parameters as any)?.allowedTools?.length > 3) && (
+              <span className="text-[9px] text-slate-400 font-mono">
+                +{(data.parameters as any).allowedTools.length - 3} ещё
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Статус выполнения блока */}
       {status && (
         <div className="mt-2 pt-2 border-t border-white/5 flex items-center justify-between text-[11px]">

@@ -171,7 +171,7 @@ export const mcpServers = pgTable('mcp_servers', {
   userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
   name: text('name').notNull(),
   description: text('description'),
-  transport: text('transport', { enum: ['stdio', 'sse', 'http'] }).notNull(),
+  transport: text('transport', { enum: ['stdio', 'sse', 'http', 'streamable-http'] }).notNull(),
   serverUrl: text('server_url'),
   command: text('command'),
   args: jsonb('args').default([]).notNull(),

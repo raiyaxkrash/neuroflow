@@ -1,4 +1,4 @@
-export type MCPTransportType = 'http' | 'sse' | 'stdio';
+export type MCPTransportType = 'http' | 'streamable-http' | 'sse' | 'stdio';
 
 export type MCPAuthType = 'none' | 'bearer' | 'api-key-header' | 'custom-headers';
 

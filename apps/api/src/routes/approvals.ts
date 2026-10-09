@@ -64,6 +64,12 @@ export async function approvalRoutes(fastify: FastifyInstance) {
         ...result,
       };
     } catch (err: any) {
+      if (err.name === 'ApprovalConflictError' || err.message?.includes('уже обработан') || err.message?.includes('Конкурентный запрос')) {
+        return reply.status(409).send({
+          error: 'Conflict',
+          message: err.message,
+        });
+      }
       return reply.status(400).send({
         error: 'ReviewError',
         message: err.message,

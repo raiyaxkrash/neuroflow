@@ -1,3 +1,4 @@
+import os from 'node:os';
 import Fastify, { FastifyInstance } from 'fastify';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
@@ -80,6 +81,41 @@ export async function buildServer(): Promise<FastifyInstance> {
     return {
       status: 'ok',
       service: 'neuroflow-api',
+      timestamp: new Date().toISOString(),
+    };
+  });
+
+  // Системные метрики и диагностика для личного сервера
+  server.get('/api/system/metrics', async () => {
+    const memUsage = process.memoryUsage();
+    const totalMem = os.totalmem();
+    const freeMem = os.freemem();
+
+    return {
+      status: 'healthy',
+      system: {
+        platform: process.platform,
+        arch: process.arch,
+        nodeVersion: process.version,
+        uptimeSeconds: Math.floor(process.uptime()),
+        cpuCount: os.cpus().length,
+        loadAverage: os.loadavg(),
+        memory: {
+          totalMb: Math.round(totalMem / (1024 * 1024)),
+          freeMb: Math.round(freeMem / (1024 * 1024)),
+          usedPercent: Math.round(((totalMem - freeMem) / totalMem) * 100),
+        },
+        processMemory: {
+          rssMb: Math.round(memUsage.rss / (1024 * 1024)),
+          heapUsedMb: Math.round(memUsage.heapUsed / (1024 * 1024)),
+          heapTotalMb: Math.round(memUsage.heapTotal / (1024 * 1024)),
+        },
+      },
+      configuration: {
+        workerConcurrency: Number(process.env.WORKER_CONCURRENCY || 5),
+        historyRetentionDays: Number(process.env.HISTORY_RETENTION_DAYS || 30),
+        hasRedis: !!(process.env.REDIS_URL && (process.env.REDIS_URL.startsWith('redis://') || process.env.REDIS_URL.startsWith('rediss://'))),
+      },
       timestamp: new Date().toISOString(),
     };
   });

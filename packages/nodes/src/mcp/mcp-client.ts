@@ -1,6 +1,11 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import {
+  LATEST_PROTOCOL_VERSION,
+  SUPPORTED_PROTOCOL_VERSIONS,
+} from '@modelcontextprotocol/sdk/types.js';
 import {
   MCPToolDefinition,
   MCPResourceDefinition,
@@ -13,7 +18,7 @@ import { validateUrlForSSRF } from '../security/ssrf-guard.js';
 export interface MCPServerConfig {
   id: string;
   name: string;
-  transport: 'stdio' | 'sse' | 'http';
+  transport: 'stdio' | 'sse' | 'http' | 'streamable-http';
   serverUrl?: string | null;
   command?: string | null;
   args?: string[] | null;
@@ -26,9 +31,10 @@ export interface MCPServerConfig {
 
 export class UniversalMCPClient {
   private client: Client | null = null;
-  private transportInstance: StdioClientTransport | SSEClientTransport | null = null;
+  private transportInstance: StdioClientTransport | SSEClientTransport | StreamableHTTPClientTransport | null = null;
   private isConnected = false;
   private lastActiveTimestamp = Date.now();
+  private negotiatedProtocolVersion: string | null = null;
 
   constructor(public readonly config: MCPServerConfig) {}
 
@@ -38,6 +44,10 @@ export class UniversalMCPClient {
 
   public touch(): void {
     this.lastActiveTimestamp = Date.now();
+  }
+
+  public getNegotiatedProtocolVersion(): string | null {
+    return this.negotiatedProtocolVersion;
   }
 
   /**
@@ -52,8 +62,10 @@ export class UniversalMCPClient {
     try {
       if (this.config.transport === 'stdio') {
         await this.connectStdio();
-      } else if (this.config.transport === 'sse' || this.config.transport === 'http') {
-        await this.connectSSE();
+      } else if (this.config.transport === 'http' || this.config.transport === 'streamable-http') {
+        await this.connectStreamableHTTP();
+      } else if (this.config.transport === 'sse') {
+        await this.connectLegacySSE();
       } else {
         throw new Error(`Неподдерживаемый транспорт MCP: ${this.config.transport}`);
       }
@@ -80,12 +92,88 @@ export class UniversalMCPClient {
       await this.client.connect(this.transportInstance);
       this.isConnected = true;
       this.touch();
+
+      // Сохраняем согласованную версию протокола и информацию о сервере
+      try {
+        const serverVersion = this.client.getServerVersion();
+        this.negotiatedProtocolVersion = serverVersion?.version || LATEST_PROTOCOL_VERSION;
+      } catch {
+        this.negotiatedProtocolVersion = LATEST_PROTOCOL_VERSION;
+      }
     } catch (error: any) {
       await this.disconnect();
       throw new Error(`Ошибка подключения к MCP серверу "${this.config.name}": ${error.message}`);
     }
   }
 
+  /**
+   * Подключение через современный Streamable HTTP транспорт с защитой от SSRF и авто-переподключением.
+   */
+  private async connectStreamableHTTP(): Promise<void> {
+    if (!this.config.serverUrl) {
+      throw new Error('Для Streamable HTTP транспорта необходимо указать serverUrl.');
+    }
+
+    // SSRF валидация перед сетевым запросом
+    await validateUrlForSSRF(this.config.serverUrl);
+
+    const headers: Record<string, string> = {
+      ...(this.config.headers || {}),
+    };
+
+    if (this.config.authType === 'bearer' && this.config.apiKey) {
+      headers['Authorization'] = `Bearer ${this.config.apiKey}`;
+    } else if (this.config.authType === 'custom_header' && this.config.apiKey) {
+      headers['x-api-key'] = this.config.apiKey;
+    }
+
+    const url = new URL(this.config.serverUrl);
+    this.transportInstance = new StreamableHTTPClientTransport(url, {
+      requestInit: {
+        headers,
+      },
+      // Запрет перехода на сторонние домены через HTTP-редиректы
+      redirectPolicy: 'same-origin',
+      reconnectionOptions: {
+        maxRetries: 3,
+        initialReconnectionDelay: 1000,
+        maxReconnectionDelay: 10000,
+        reconnectionDelayGrowFactor: 1.5,
+      },
+    });
+  }
+
+  /**
+   * Подключение через Legacy Server-Sent Events (SSE) для совместимости со старыми серверами.
+   */
+  private async connectLegacySSE(): Promise<void> {
+    if (!this.config.serverUrl) {
+      throw new Error('Для Legacy SSE транспорта необходимо указать serverUrl.');
+    }
+
+    await validateUrlForSSRF(this.config.serverUrl);
+
+    const headers: Record<string, string> = {
+      ...(this.config.headers || {}),
+    };
+
+    if (this.config.authType === 'bearer' && this.config.apiKey) {
+      headers['Authorization'] = `Bearer ${this.config.apiKey}`;
+    } else if (this.config.authType === 'custom_header' && this.config.apiKey) {
+      headers['x-api-key'] = this.config.apiKey;
+    }
+
+    const url = new URL(this.config.serverUrl);
+    this.transportInstance = new SSEClientTransport(url, {
+      requestInit: {
+        headers,
+      },
+    });
+  }
+
+  /**
+   * Подключение через Stdio транспорт с проверкой песочницы безопасности.
+   */
   private async connectStdio(): Promise<void> {
     if (!this.config.command) {
       throw new Error('Для Stdio транспорта необходимо указать команду.');
@@ -106,30 +194,26 @@ export class UniversalMCPClient {
     });
   }
 
-  private async connectSSE(): Promise<void> {
-    if (!this.config.serverUrl) {
-      throw new Error('Для SSE транспорта необходимо указать serverUrl.');
+  /**
+   * Проверка доступности сервера (Ping) через JSON-RPC.
+   */
+  public async ping(): Promise<boolean> {
+    try {
+      this.ensureConnected();
+      await this.client!.ping();
+      this.touch();
+      return true;
+    } catch {
+      return false;
     }
+  }
 
-    // SSRF валидация перед установкой соединения
-    await validateUrlForSSRF(this.config.serverUrl);
-
-    const headers: Record<string, string> = {
-      ...(this.config.headers || {}),
-    };
-
-    if (this.config.authType === 'bearer' && this.config.apiKey) {
-      headers['Authorization'] = `Bearer ${this.config.apiKey}`;
-    } else if (this.config.authType === 'custom_header' && this.config.apiKey) {
-      headers['x-api-key'] = this.config.apiKey;
-    }
-
-    const url = new URL(this.config.serverUrl);
-    this.transportInstance = new SSEClientTransport(url, {
-      requestInit: {
-        headers,
-      },
-    });
+  /**
+   * Чистое переподключение к серверу.
+   */
+  public async reconnect(): Promise<void> {
+    await this.disconnect();
+    await this.connect();
   }
 
   /**
@@ -153,7 +237,7 @@ export class UniversalMCPClient {
   }
 
   /**
-   * Вызов инструмента на удаленном MCP сервере.
+   * Вызов инструмента на MCP сервере.
    */
   public async callTool(toolName: string, args: Record<string, any> = {}): Promise<CallMCPToolResult> {
     this.ensureConnected();
