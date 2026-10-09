@@ -50,6 +50,18 @@ import {
   MemoryWriteNode,
   KnowledgeGraphQueryNode,
 } from './definitions/knowledge-nodes.js';
+import {
+  BrowserStartNode,
+  BrowserNavigateNode,
+  BrowserClickNode,
+  BrowserTypeNode,
+  BrowserExtractNode,
+  BrowserScreenshotNode,
+  BrowserWaitNode,
+  BrowserDownloadNode,
+  BrowserCloseNode,
+  AIBrowserAgentNode,
+} from './definitions/browser-nodes.js';
 
 export class NodeRegistry {
   private nodes = new Map<string, INodeDefinition>();
@@ -110,6 +122,18 @@ export class NodeRegistry {
     this.register(new MemoryReadNode());
     this.register(new MemoryWriteNode());
     this.register(new KnowledgeGraphQueryNode());
+
+    // Phase 6: Browser & Computer Automation Nodes
+    this.register(new BrowserStartNode());
+    this.register(new BrowserNavigateNode());
+    this.register(new BrowserClickNode());
+    this.register(new BrowserTypeNode());
+    this.register(new BrowserExtractNode());
+    this.register(new BrowserScreenshotNode());
+    this.register(new BrowserWaitNode());
+    this.register(new BrowserDownloadNode());
+    this.register(new BrowserCloseNode());
+    this.register(new AIBrowserAgentNode());
   }
 
   public static getInstance(): NodeRegistry {

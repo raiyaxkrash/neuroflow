@@ -38,6 +38,8 @@ export enum NodeCategory {
   DISCORD = 'discord',
   FILESYSTEM = 'filesystem',
   KNOWLEDGE = 'knowledge',
+  BROWSER = 'browser',
+  DESKTOP = 'desktop',
 }
 
 export enum HttpMethod {

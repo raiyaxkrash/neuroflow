@@ -1,6 +1,7 @@
 import { HybridSearchEngine, HybridSearchOptions } from './hybrid-search.js';
 import { SearchResultItem, Citation, RAGAnswerResult } from '@neuroflow/shared';
 import { IAIProvider } from '../ai/provider-interface.js';
+import { TokenUsageManager } from './token-manager.js';
 
 export interface RAGQueryOptions extends HybridSearchOptions {
   question: string;
@@ -15,7 +16,7 @@ export interface RAGQueryOptions extends HybridSearchOptions {
 
 export class RAGEngine {
   /**
-   * Защита от Prompt Injection: санитизация текста документов перед включением в промпт
+   * Защита от Prompt Injection: глубокая санитизация текста документов перед включением в промпт
    */
   public static sanitizeContextChunk(text: string): string {
     return text
@@ -23,7 +24,13 @@ export class RAGEngine {
       .replace(/<\/system>/gi, '[/system]')
       .replace(/<instructions>/gi, '[instructions]')
       .replace(/<\/instructions>/gi, '[/instructions]')
-      .replace(/```(?:system|assistant)/gi, '```text');
+      .replace(/<\|im_start\|>(?:system|developer|user|assistant)/gi, '[im_marker]')
+      .replace(/<\|im_end\|>/gi, '[/im_marker]')
+      .replace(/\[INST\][\s\S]*?\[\/INST\]/gi, (m) => m.replace(/INST/g, 'user_snippet'))
+      .replace(/<<SYS>>[\s\S]*?<<\/SYS>>/gi, (m) => m.replace(/SYS/g, 'ref_sys'))
+      .replace(/###\s*(?:System|Developer|Instructions?)\s*:/gi, '### Reference Notes:')
+      .replace(/(?:Ignore all previous instructions|Forget all prior prompts|Disregard earlier commands)/gi, '[Blocked Injection Attempt]')
+      .replace(/```(?:system|assistant|developer)/gi, '```text');
   }
 
   /**
@@ -105,7 +112,13 @@ ${contextText}
 
 Сформулируй развернутый и доказательный ответ со ссылками на источники из контекста выше:`;
 
-    // 5. Вызов LLM
+    // 5. Проверка бюджета токенов перед вызовом
+    const estimatedInputTokens = Math.round((contextText.length + userPrompt.length) / 4);
+    if (options.userId) {
+      await TokenUsageManager.checkBudget(options.userId, estimatedInputTokens);
+    }
+
+    // 6. Вызов LLM
     let provider = options.aiProvider;
     let rawAnswer = '';
 
@@ -118,8 +131,21 @@ ${contextText}
           temperature: options.temperature !== undefined ? options.temperature : 0.2,
         });
         rawAnswer = genRes.text;
+
+        // Фиксация фактического расхода токенов
+        if (options.userId) {
+          const inTokens = genRes.usage?.promptTokens || estimatedInputTokens;
+          const outTokens = genRes.usage?.completionTokens || Math.round(rawAnswer.length / 4);
+          await TokenUsageManager.recordUsage({
+            userId: options.userId,
+            providerId: options.providerId || provider.id || provider.name,
+            model: genRes.model || options.model || 'rag-llm',
+            inputTokens: inTokens,
+            outputTokens: outTokens,
+          });
+        }
       } catch {
-        // Fallback
+        // Fallback к автономному ответу
       }
     }
 
@@ -127,6 +153,16 @@ ${contextText}
       // Автономный структурированный синтез ответа с обязательными цитатами
       const sourcesList = citations.map((c) => `[Источник ${c.index}: "${c.documentTitle}"]`).join(', ');
       rawAnswer = `На основе анализа документов (${sourcesList}):\n\n${chunks[0].content}\n\n[Подтверждено первоисточниками: ${sourcesList}]`;
+
+      if (options.userId) {
+        await TokenUsageManager.recordUsage({
+          userId: options.userId,
+          providerId: 'local-second-brain',
+          model: 'deterministic-rag-v1',
+          inputTokens: estimatedInputTokens,
+          outputTokens: Math.round(rawAnswer.length / 4),
+        });
+      }
     }
 
     return {

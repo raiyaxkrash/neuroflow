@@ -3,6 +3,7 @@ import { NodeCategory, WorkflowPortDefinition } from '@neuroflow/shared';
 import { AIModelParametersSchema } from '@neuroflow/shared';
 import { AIProviderFactory } from '../ai/provider-factory.js';
 import { getDatabase, aiProviders, eq } from '@neuroflow/database';
+import { TokenUsageManager } from '../knowledge/token-manager.js';
 
 /**
  * Безопасное получение значения по dot-нотации из объекта
@@ -190,6 +191,26 @@ export class AIModelNode extends BaseNodeDef {
           responseFormat: params.responseFormat,
           signal: context.signal,
         });
+
+        // Учет расхода токенов
+        try {
+          const userId = (context as any).userId;
+          if (userId) {
+            const promptTokens = result.usage?.promptTokens || Math.round(interpolatedUserPrompt.length / 4);
+            const completionTokens = result.usage?.completionTokens || Math.round((result.text || '').length / 4);
+            await TokenUsageManager.recordUsage({
+              userId,
+              providerId: providerKey || provider.id || provider.name,
+              model: result.model || params.model || 'ai-model',
+              workflowId: context.workflowId,
+              executionId: context.executionId,
+              inputTokens: promptTokens,
+              outputTokens: completionTokens,
+            });
+          }
+        } catch {
+          // Игнорируем ошибку метрик
+        }
 
         break; // Успешно!
       } catch (err: any) {

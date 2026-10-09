@@ -20,7 +20,7 @@ import {
   AICopilotRequestSchema,
   AIDebugRequestSchema,
 } from '@neuroflow/shared';
-import { AIProviderFactory } from '@neuroflow/nodes';
+import { AIProviderFactory, TokenUsageManager } from '@neuroflow/nodes';
 import {
   AIWorkflowGenerator,
   AICopilotService,
@@ -333,6 +333,20 @@ export async function aiRoutes(fastify: FastifyInstance) {
         model,
         contextGraph,
       });
+
+      // Учет токенов генератора воркфлоу
+      try {
+        const inputTokens = Math.round(prompt.length / 4);
+        const outputTokens = Math.round(JSON.stringify(result).length / 4);
+        await TokenUsageManager.recordUsage({
+          userId: request.user.id,
+          providerId: provider.id || provider.name,
+          model: model || 'workflow-generator',
+          inputTokens,
+          outputTokens,
+        });
+      } catch {}
+
       return reply.send(result);
     } catch (err: any) {
       return reply.status(422).send({
@@ -381,6 +395,21 @@ export async function aiRoutes(fastify: FastifyInstance) {
         aiProvider: provider,
         model,
       });
+
+      // Учет токенов Copilot
+      try {
+        const inputTokens = Math.round(JSON.stringify(messages).length / 4);
+        const outputTokens = Math.round(JSON.stringify(response).length / 4);
+        await TokenUsageManager.recordUsage({
+          userId: request.user.id,
+          providerId: provider.id || provider.name,
+          model: model || 'copilot',
+          workflowId: parsePayload.workflowId,
+          inputTokens,
+          outputTokens,
+        });
+      } catch {}
+
       return reply.send(response);
     } catch (err: any) {
       return reply.status(500).send({
@@ -450,6 +479,20 @@ export async function aiRoutes(fastify: FastifyInstance) {
       previousNodeOutputs: previousOutputs,
       aiProvider: provider,
     });
+
+    // Учет токенов AI Debugger
+    try {
+      const inputTokens = Math.round(JSON.stringify(previousOutputs).length / 4) + 200;
+      const outputTokens = Math.round(JSON.stringify(debugResponse).length / 4);
+      await TokenUsageManager.recordUsage({
+        userId: request.user.id,
+        providerId: provider.id || provider.name,
+        model: 'ai-debugger',
+        executionId,
+        inputTokens,
+        outputTokens,
+      });
+    } catch {}
 
     return reply.send(debugResponse);
   });

@@ -4,6 +4,9 @@ export interface EmbeddingResult {
   embedding: number[];
   model: string;
   dimension: number;
+  embeddingType: 'semantic_neural' | 'heuristic_ngram_fallback';
+  provider: 'ollama' | 'openai' | 'fallback';
+  isFallback: boolean;
 }
 
 export class EmbeddingService {
@@ -37,7 +40,7 @@ export class EmbeddingService {
 
   /**
    * Детерминированное построение векторного представления на базе n-грамм и L2-нормализации.
-   * Обеспечивает семантическую близость родственных текстов в автономном режиме без сторонних API.
+   * Используется ИСКЛЮЧИТЕЛЬНО как автономный эвристический fallback при недоступности внешних нейросетей.
    */
   public static generateDeterministicEmbedding(text: string, dimension = 384): number[] {
     const vector = new Array(dimension).fill(0);
@@ -82,7 +85,8 @@ export class EmbeddingService {
   }
 
   /**
-   * Получение векторного представления через Ollama, OpenAI или детерминированный fallback
+   * Получение векторного представления через Ollama, OpenAI или детерминированный fallback.
+   * Четко помечает, является ли результат настоящим нейросетевым эмбеддингом или эвристикой.
    */
   public static async getEmbedding(
     text: string,
@@ -95,10 +99,10 @@ export class EmbeddingService {
     } = {}
   ): Promise<EmbeddingResult> {
     const providerType = options.providerType || 'deterministic';
-    const model = options.model || (providerType === 'ollama' ? 'nomic-embed-text' : providerType === 'openai' ? 'text-embedding-3-small' : 'deterministic-384');
+    const model = options.model || (providerType === 'ollama' ? 'nomic-embed-text' : providerType === 'openai' ? 'text-embedding-3-small' : 'heuristic-ngram-384');
     const dimension = options.dimension || (model.includes('384') ? 384 : 1536);
 
-    // 1. Ollama локально
+    // 1. Ollama локально (реальные нейросетевые эмбеддинги)
     if (providerType === 'ollama') {
       try {
         const baseUrl = options.baseUrl || 'http://localhost:11434';
@@ -114,15 +118,18 @@ export class EmbeddingService {
               embedding: data.embedding,
               model,
               dimension: data.embedding.length,
+              embeddingType: 'semantic_neural',
+              provider: 'ollama',
+              isFallback: false,
             };
           }
         }
-      } catch {
-        // Fallback на детерминированный вектор при недоступности Ollama
+      } catch (err: any) {
+        console.warn(`[Embedding] Локальный Ollama недоступен (${err.message}). Переход на автономный n-gram fallback.`);
       }
     }
 
-    // 2. OpenAI-совместимый API
+    // 2. OpenAI-совместимый API (реальные нейросетевые эмбеддинги)
     if (providerType === 'openai' && options.apiKey) {
       try {
         const baseUrl = options.baseUrl || 'https://api.openai.com/v1';
@@ -142,20 +149,26 @@ export class EmbeddingService {
               embedding: emb,
               model,
               dimension: emb.length,
+              embeddingType: 'semantic_neural',
+              provider: 'openai',
+              isFallback: false,
             };
           }
         }
-      } catch {
-        // Fallback на детерминированный вектор
+      } catch (err: any) {
+        console.warn(`[Embedding] OpenAI API недоступен (${err.message}). Переход на автономный n-gram fallback.`);
       }
     }
 
-    // 3. Детерминированный / Mock fallback (работает всегда)
+    // 3. Автономный n-gram эвристический fallback
     const embedding = this.generateDeterministicEmbedding(text, dimension);
     return {
       embedding,
-      model: `local-${model}`,
+      model: `heuristic-ngram-${dimension}`,
       dimension,
+      embeddingType: 'heuristic_ngram_fallback',
+      provider: 'fallback',
+      isFallback: true,
     };
   }
 

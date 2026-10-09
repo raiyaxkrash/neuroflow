@@ -10,6 +10,9 @@ export interface NodeExecutionContext {
   parameters: Record<string, any>;
   inputData: any;
   workflowContext: Record<string, any>;
+  workflowId?: string;
+  executionId?: string;
+  userId?: string;
   signal?: AbortSignal;
   credentials?: Record<string, any>;
   log?: (message: string, data?: any) => void;

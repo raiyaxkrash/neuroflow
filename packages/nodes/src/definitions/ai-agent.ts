@@ -3,6 +3,7 @@ import { NodeCategory, WorkflowPortDefinition, AIAgentParametersSchema } from '@
 import { AIProviderFactory } from '../ai/provider-factory.js';
 import { UniversalToolRegistry } from '../tools/tool-registry.js';
 import { getDatabase, aiProviders, mcpServers, agentExecutionLogs, eq } from '@neuroflow/database';
+import { TokenUsageManager } from '../knowledge/token-manager.js';
 
 function interpolateAgentPrompt(template: string, inputData: any): string {
   if (!template || typeof template !== 'string') return '';
@@ -194,6 +195,25 @@ Always think step-by-step. Never fabricate tool results.`;
 
       const assistantText = response.text || '';
       messages.push({ role: 'assistant', content: assistantText });
+
+      try {
+        const userId = (context as any).userId;
+        if (userId) {
+          const promptTokens = response.usage?.promptTokens || Math.round(JSON.stringify(messages).length / 4);
+          const completionTokens = response.usage?.completionTokens || Math.round(assistantText.length / 4);
+          await TokenUsageManager.recordUsage({
+            userId,
+            providerId: providerKey || provider.id || provider.name || 'ai-agent',
+            model: response.model || params.model || 'default',
+            workflowId: context.workflowId,
+            executionId: (context as any).executionId,
+            inputTokens: promptTokens,
+            outputTokens: completionTokens,
+          });
+        }
+      } catch {
+        // Игнорируем ошибки записи метрик
+      }
 
       // Парсинг Thought
       const thoughtMatch = assistantText.match(/Thought:\s*(.*?)(?=\nAction:|\nFinal Answer:|$)/s);

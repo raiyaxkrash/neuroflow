@@ -1,4 +1,6 @@
 import { validateUrlForSSRF } from '../security/ssrf-guard.js';
+import { BrowserSessionManager } from '../browser/browser-session-manager.js';
+import { BrowserEngine } from '../browser/browser-engine.js';
 
 export interface ToolExecutionResult {
   success: boolean;
@@ -278,4 +280,143 @@ export const BUILT_IN_TOOLS: BuiltInToolDefinition[] = [
       return { path: pathStr, result: current };
     },
   },
+  {
+    name: 'browser_navigate',
+    description: 'Открывает веб-сайт в браузере Playwright. Возвращает sessionId, текущий URL и заголовок страницы.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        url: { type: 'string', description: 'URL адрес страницы' },
+        sessionId: { type: 'string', description: 'Опциональный ID существующей сессии' },
+        allowLocalhost: { type: 'boolean', description: 'Разрешить доступ к localhost (по умолчанию false)' },
+      },
+      required: ['url'],
+    },
+    handler: async (args) => {
+      const manager = BrowserSessionManager.getInstance();
+      const engine = new BrowserEngine();
+      let sessionId = args.sessionId;
+
+      if (!sessionId || !manager.getSession(sessionId)) {
+        const session = await manager.createSession({
+          allowLocalhost: !!args.allowLocalhost,
+        });
+        sessionId = session.id;
+      }
+
+      const result = await engine.navigate(sessionId, args.url, {
+        allowLocalhost: !!args.allowLocalhost,
+      });
+
+      return {
+        sessionId,
+        url: result.url,
+        title: result.title,
+        status: result.httpStatus,
+      };
+    },
+  },
+  {
+    name: 'browser_click',
+    description: 'Выполняет клик по элементу веб-страницы по CSS селектору.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        sessionId: { type: 'string', description: 'ID браузерной сессии' },
+        selector: { type: 'string', description: 'CSS/Playwright селектор элемента' },
+      },
+      required: ['sessionId', 'selector'],
+    },
+    handler: async (args) => {
+      const engine = new BrowserEngine();
+      const result = await engine.click(args.sessionId, args.selector);
+      return result;
+    },
+  },
+  {
+    name: 'browser_type',
+    description: 'Вводит текст в поле формы на веб-странице.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        sessionId: { type: 'string', description: 'ID браузерной сессии' },
+        selector: { type: 'string', description: 'CSS селектор поля ввода' },
+        text: { type: 'string', description: 'Текст для ввода' },
+        pressEnter: { type: 'boolean', description: 'Нажать ли клавишу Enter после ввода' },
+      },
+      required: ['sessionId', 'selector', 'text'],
+    },
+    handler: async (args) => {
+      const engine = new BrowserEngine();
+      const result = await engine.type(args.sessionId, args.selector, args.text, {
+        pressEnter: !!args.pressEnter,
+      });
+      return result;
+    },
+  },
+  {
+    name: 'browser_extract',
+    description: 'Извлекает текст, HTML-таблицу или элементы с веб-страницы.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        sessionId: { type: 'string', description: 'ID браузерной сессии' },
+        selector: { type: 'string', description: 'CSS селектор (по умолчанию body)' },
+        extractType: {
+          type: 'string',
+          enum: ['text', 'html', 'table', 'all_elements'],
+          description: 'Тип извлечения (text, table, all_elements)',
+        },
+      },
+      required: ['sessionId'],
+    },
+    handler: async (args) => {
+      const engine = new BrowserEngine();
+      const result = await engine.extract(args.sessionId, args.selector || 'body', {
+        extractType: args.extractType || 'text',
+      });
+      return result;
+    },
+  },
+  {
+    name: 'browser_screenshot',
+    description: 'Создает скриншот веб-страницы в формате base64.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        sessionId: { type: 'string', description: 'ID браузерной сессии' },
+        fullPage: { type: 'boolean', description: 'Снимок всей страницы' },
+      },
+      required: ['sessionId'],
+    },
+    handler: async (args) => {
+      const engine = new BrowserEngine();
+      const result = await engine.screenshot(args.sessionId, {
+        fullPage: !!args.fullPage,
+      });
+      return {
+        sessionId: args.sessionId,
+        sizeBytes: result.sizeBytes,
+        mimeType: result.mimeType,
+        base64Length: result.base64.length,
+      };
+    },
+  },
+  {
+    name: 'browser_close',
+    description: 'Закрывает сессию браузера и освобождает оперативную память.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        sessionId: { type: 'string', description: 'ID браузерной сессии' },
+      },
+      required: ['sessionId'],
+    },
+    handler: async (args) => {
+      const manager = BrowserSessionManager.getInstance();
+      const closed = await manager.closeSession(args.sessionId);
+      return { sessionId: args.sessionId, closed };
+    },
+  },
 ];
+

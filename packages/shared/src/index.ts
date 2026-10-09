@@ -8,3 +8,4 @@ export * from './canonical.js';
 export * from './integration-types.js';
 export * from './workflow-templates.js';
 export * from './knowledge-types.js';
+export * from './browser-types.js';
