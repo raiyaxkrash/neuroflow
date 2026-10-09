@@ -169,7 +169,10 @@ if [ -n "$TOKEN" ]; then
       -H "Content-Type: application/json" \
       -d '{}')
     
-    EXEC_ID=$(echo "$EXEC_RESP" | grep -o '"id":"[^"]*"' | head -1 | cut -d '"' -f4)
+    EXEC_ID=$(echo "$EXEC_RESP" | grep -o '"executionId":"[^"]*"' | head -1 | cut -d '"' -f4)
+    if [ -z "$EXEC_ID" ]; then
+      EXEC_ID=$(echo "$EXEC_RESP" | grep -o '"id":"[^"]*"' | head -1 | cut -d '"' -f4)
+    fi
     if [ -n "$EXEC_ID" ]; then
       log_ok "Execution queued (Execution ID: $EXEC_ID)"
       
