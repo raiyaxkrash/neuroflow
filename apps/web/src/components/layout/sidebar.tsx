@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
   GitFork,
+  Blocks,
   Activity,
   KeyRound,
   Settings,
@@ -16,6 +17,7 @@ import {
 const navigationItems = [
   { name: 'Overview', href: '/overview', icon: LayoutDashboard },
   { name: 'Workflows', href: '/workflows', icon: GitFork },
+  { name: 'Integrations', href: '/integrations', icon: Blocks },
   { name: 'Executions', href: '/executions', icon: Activity },
   { name: 'Credentials', href: '/credentials', icon: KeyRound },
   { name: 'Settings', href: '/settings', icon: Settings },

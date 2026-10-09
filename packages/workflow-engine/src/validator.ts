@@ -106,7 +106,10 @@ export class WorkflowValidator {
     // Проверка наличия триггера
     const hasTrigger = nodes.some((n) => {
       const def = registry.getNode(n.type);
-      return def && def.category === 'trigger';
+      return (
+        (def && (def.category === 'trigger' || def.category === 'telegram' || def.category === 'github' || def.category === 'discord')) ||
+        n.type.endsWith('-trigger')
+      );
     });
     if (!hasTrigger) {
       warnings.push('В воркфлоу отсутствует узел-триггер (например, Manual Trigger). Запуск будет производиться с корневого узла.');

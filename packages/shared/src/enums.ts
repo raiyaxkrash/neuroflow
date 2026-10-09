@@ -32,6 +32,11 @@ export enum NodeCategory {
   UTILITY = 'utility',
   AI = 'ai',
   AGENT = 'agent',
+  INTEGRATION = 'integration',
+  TELEGRAM = 'telegram',
+  GITHUB = 'github',
+  DISCORD = 'discord',
+  FILESYSTEM = 'filesystem',
 }
 
 export enum HttpMethod {

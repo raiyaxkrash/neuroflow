@@ -13,6 +13,9 @@ import { aiRoutes } from './routes/ai.js';
 import { mcpRoutes } from './routes/mcp.js';
 import { approvalRoutes } from './routes/approvals.js';
 import { memoryRoutes } from './routes/memories.js';
+import { integrationRoutes } from './routes/integrations.js';
+import { webhookRoutes } from './routes/webhooks.js';
+import { SchedulerEngine } from '@neuroflow/workflow-engine';
 
 export async function buildServer(): Promise<FastifyInstance> {
   const server = Fastify({
@@ -129,6 +132,20 @@ export async function buildServer(): Promise<FastifyInstance> {
   await server.register(mcpRoutes, { prefix: '/api/mcp' });
   await server.register(approvalRoutes, { prefix: '/api/approvals' });
   await server.register(memoryRoutes, { prefix: '/api/memories' });
+  await server.register(integrationRoutes, { prefix: '/api/integrations' });
+  await server.register(webhookRoutes, { prefix: '/api/webhooks' });
+
+  // Восстановление активных расписаний из базы данных
+  server.addHook('onReady', async () => {
+    try {
+      const restoredCount = await SchedulerEngine.syncSchedulesFromDatabase();
+      if (restoredCount > 0) {
+        server.log.info(`[Scheduler] Восстановлено ${restoredCount} активных расписаний из базы данных.`);
+      }
+    } catch {
+      // Игнорируем в тестовом окружении
+    }
+  });
 
   // Глобальный error handler
   server.setErrorHandler((error: any, request, reply) => {

@@ -15,6 +15,7 @@ import {
   WorkflowGraphSchema,
   ExecutionStatus,
   WorkflowTriggerType,
+  WORKFLOW_TEMPLATES,
 } from '@neuroflow/shared';
 import { WorkflowValidator, getWorkflowQueue } from '@neuroflow/workflow-engine';
 
@@ -275,5 +276,129 @@ export async function workflowRoutes(fastify: FastifyInstance) {
       version: wf.version,
       message: 'Запуск воркфлоу поставлен в очередь выполнения',
     });
+  });
+
+  // Список встроенных готовых шаблонов (Templates)
+  fastify.get('/templates', {
+    schema: {
+      tags: ['Workflows'],
+      summary: 'Каталог готовых проверенных шаблонов автоматизаций',
+    },
+  }, async (_request, reply) => {
+    return reply.send(WORKFLOW_TEMPLATES);
+  });
+
+  // Создание воркфлоу из шаблона
+  fastify.post('/templates/:templateId/instantiate', {
+    schema: {
+      tags: ['Workflows'],
+      summary: 'Создание нового воркфлоу на основе выбранного шаблона',
+    },
+    preHandler: authenticate,
+  }, async (request: any, reply) => {
+    const { templateId } = request.params;
+    const template = WORKFLOW_TEMPLATES.find((t) => t.id === templateId);
+
+    if (!template) {
+      return reply.status(404).send({ error: 'Шаблон не найден' });
+    }
+
+    const db = getDatabase();
+    const [created] = await db
+      .insert(workflows)
+      .values({
+        userId: request.user.id,
+        name: template.name,
+        description: template.description,
+        graph: template.graph,
+        isActive: true,
+        version: 1,
+      })
+      .returning();
+
+    // Запись версии 1
+    await db.insert(workflowVersions).values({
+      workflowId: created.id,
+      version: 1,
+      graph: template.graph,
+      settings: {},
+    });
+
+    return reply.status(201).send(created);
+  });
+
+  // Экспорт схемы воркфлоу в JSON
+  fastify.get('/:id/export', {
+    schema: {
+      tags: ['Workflows'],
+      summary: 'Экспорт схемы и настроек воркфлоу в JSON',
+    },
+    preHandler: authenticate,
+  }, async (request: any, reply) => {
+    const { id } = request.params;
+    const db = getDatabase();
+
+    const [wf] = await db.select().from(workflows).where(eq(workflows.id, id)).limit(1);
+    if (!wf) {
+      return reply.status(404).send({ error: 'Воркфлоу не найден' });
+    }
+
+    const exportData = {
+      neuroflowSchemaVersion: '1.0',
+      exportedAt: new Date().toISOString(),
+      name: wf.name,
+      description: wf.description,
+      version: wf.version,
+      graph: wf.graph,
+      settings: wf.settings,
+    };
+
+    reply.header('Content-Disposition', `attachment; filename="${encodeURIComponent(wf.name)}.neuroflow.json"`);
+    return reply.send(exportData);
+  });
+
+  // Импорт схемы воркфлоу из JSON
+  fastify.post('/import', {
+    schema: {
+      tags: ['Workflows'],
+      summary: 'Импорт воркфлоу из файла JSON схемы',
+    },
+    preHandler: authenticate,
+  }, async (request: any, reply) => {
+    const body = request.body as any;
+    if (!body || !body.graph) {
+      return reply.status(400).send({ error: 'Некорректный формат файла экспорта. Поле graph обязательно.' });
+    }
+
+    const validation = WorkflowValidator.validate(body.graph);
+    if (!validation.valid) {
+      return reply.status(400).send({
+        error: 'Импортируемый граф содержит ошибки валидации',
+        validationErrors: validation.errors,
+      });
+    }
+
+    const db = getDatabase();
+    const [imported] = await db
+      .insert(workflows)
+      .values({
+        userId: request.user.id,
+        name: body.name ? `${body.name} (Импортирован)` : 'Импортированный воркфлоу',
+        description: body.description || 'Импортировано из JSON файла',
+        graph: body.graph,
+        settings: body.settings || {},
+        isActive: true,
+        version: 1,
+      })
+      .returning();
+
+    await db.insert(workflowVersions).values({
+      workflowId: imported.id,
+      version: 1,
+      graph: body.graph,
+      settings: body.settings || {},
+    });
+
+    return reply.status(201).send(imported);
   });
 }

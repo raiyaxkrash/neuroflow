@@ -21,6 +21,15 @@ import {
   Wrench,
   ShieldAlert,
   Plug,
+  Send,
+  Github,
+  MessageSquare,
+  Folder,
+  FileText,
+  FileSignature,
+  Webhook,
+  Terminal,
+  FileUp,
 } from 'lucide-react';
 import { useWorkflowStore } from '@/store/workflow-store';
 
@@ -39,6 +48,22 @@ const iconMap: Record<string, React.ReactNode> = {
   'tool-executor': <Wrench className="w-4 h-4 text-pink-400" />,
   'human-approval': <ShieldAlert className="w-4 h-4 text-rose-400" />,
   'mcp-tool': <Plug className="w-4 h-4 text-indigo-400" />,
+  // Phase 4 Integrations
+  'telegram-message-trigger': <Send className="w-4 h-4 text-[#0088CC]" />,
+  'telegram-command-trigger': <Terminal className="w-4 h-4 text-[#0088CC]" />,
+  'telegram-send-message': <Send className="w-4 h-4 text-[#0088CC]" />,
+  'telegram-send-document': <FileUp className="w-4 h-4 text-[#0088CC]" />,
+  'github-event-trigger': <Github className="w-4 h-4 text-slate-100" />,
+  'github-get-issue': <Github className="w-4 h-4 text-slate-100" />,
+  'github-create-issue': <Github className="w-4 h-4 text-slate-100" />,
+  'discord-trigger': <MessageSquare className="w-4 h-4 text-[#5865F2]" />,
+  'discord-send-message': <MessageSquare className="w-4 h-4 text-[#5865F2]" />,
+  'schedule-trigger': <Clock className="w-4 h-4 text-purple-400" />,
+  'webhook-trigger': <Webhook className="w-4 h-4 text-pink-400" />,
+  'read-file': <FileText className="w-4 h-4 text-emerald-400" />,
+  'write-file': <FileSignature className="w-4 h-4 text-emerald-400" />,
+  'list-directory': <Folder className="w-4 h-4 text-emerald-400" />,
+  'file-changed-trigger': <Clock className="w-4 h-4 text-emerald-400" />,
 };
 
 const categoryLabels: Record<string, string> = {
@@ -56,6 +81,21 @@ const categoryLabels: Record<string, string> = {
   'tool-executor': 'Tool',
   'human-approval': 'Approval',
   'mcp-tool': 'MCP Tool',
+  'telegram-message-trigger': 'Telegram',
+  'telegram-command-trigger': 'Telegram',
+  'telegram-send-message': 'Telegram',
+  'telegram-send-document': 'Telegram',
+  'github-event-trigger': 'GitHub',
+  'github-get-issue': 'GitHub',
+  'github-create-issue': 'GitHub',
+  'discord-trigger': 'Discord',
+  'discord-send-message': 'Discord',
+  'schedule-trigger': 'Scheduler',
+  'webhook-trigger': 'Webhook',
+  'read-file': 'Filesystem',
+  'write-file': 'Filesystem',
+  'list-directory': 'Filesystem',
+  'file-changed-trigger': 'Filesystem',
 };
 
 export const CustomNode = memo(({ id, data, selected }: NodeProps) => {

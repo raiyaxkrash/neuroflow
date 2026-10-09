@@ -14,6 +14,31 @@ import { AgentMemoryNode } from './definitions/agent-memory.js';
 import { ToolExecutorNode } from './definitions/tool-executor.js';
 import { HumanApprovalNode } from './definitions/human-approval.js';
 import { MCPToolNode } from './definitions/mcp-tool.js';
+import {
+  TelegramMessageTriggerNode,
+  TelegramCommandTriggerNode,
+  TelegramSendMessageNode,
+  TelegramSendDocumentNode,
+} from './definitions/telegram-nodes.js';
+import {
+  GitHubEventTriggerNode,
+  GitHubGetIssueNode,
+  GitHubCreateIssueNode,
+} from './definitions/github-nodes.js';
+import {
+  DiscordTriggerNode,
+  DiscordSendMessageNode,
+} from './definitions/discord-nodes.js';
+import {
+  ReadFileNode,
+  WriteFileNode,
+  ListDirectoryNode,
+  FileChangedTriggerNode,
+} from './definitions/filesystem-nodes.js';
+import {
+  ScheduleTriggerNode,
+  WebhookTriggerNode,
+} from './definitions/scheduler-nodes.js';
 
 export class NodeRegistry {
   private nodes = new Map<string, INodeDefinition>();
@@ -37,6 +62,32 @@ export class NodeRegistry {
     this.register(new ToolExecutorNode());
     this.register(new HumanApprovalNode());
     this.register(new MCPToolNode());
+
+    // Phase 4 Nodes
+    // Telegram
+    this.register(new TelegramMessageTriggerNode());
+    this.register(new TelegramCommandTriggerNode());
+    this.register(new TelegramSendMessageNode());
+    this.register(new TelegramSendDocumentNode());
+
+    // GitHub
+    this.register(new GitHubEventTriggerNode());
+    this.register(new GitHubGetIssueNode());
+    this.register(new GitHubCreateIssueNode());
+
+    // Discord
+    this.register(new DiscordTriggerNode());
+    this.register(new DiscordSendMessageNode());
+
+    // Filesystem
+    this.register(new ReadFileNode());
+    this.register(new WriteFileNode());
+    this.register(new ListDirectoryNode());
+    this.register(new FileChangedTriggerNode());
+
+    // Scheduler & Webhook
+    this.register(new ScheduleTriggerNode());
+    this.register(new WebhookTriggerNode());
   }
 
   public static getInstance(): NodeRegistry {

@@ -249,6 +249,29 @@ export const agentExecutionLogs = pgTable('agent_execution_logs', {
   index('agent_execution_logs_node_id_idx').on(table.nodeId),
 ]);
 
+// Таблица персональных внешних интеграций (Phase 4)
+export const integrations = pgTable('integrations', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  name: text('name').notNull(),
+  serviceType: text('service_type', {
+    enum: ['telegram', 'discord', 'github', 'filesystem', 'webhook'],
+  }).notNull(),
+  credentialId: uuid('credential_id').references(() => credentials.id, { onDelete: 'set null' }),
+  settings: jsonb('settings').default({}).notNull(),
+  status: text('status', {
+    enum: ['connected', 'error', 'disconnected'],
+  }).default('disconnected').notNull(),
+  lastTestedAt: timestamp('last_tested_at', { withTimezone: true }),
+  lastError: text('last_error'),
+  isEnabled: boolean('is_enabled').default(true).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index('integrations_user_id_idx').on(table.userId),
+  index('integrations_service_type_idx').on(table.serviceType),
+]);
+
 // Связи Drizzle Relations
 export const usersRelations = relations(users, ({ many }) => ({
   workflows: many(workflows),
@@ -256,6 +279,18 @@ export const usersRelations = relations(users, ({ many }) => ({
   aiProviders: many(aiProviders),
   mcpServers: many(mcpServers),
   agentMemories: many(agentMemories),
+  integrations: many(integrations),
+}));
+
+export const integrationsRelations = relations(integrations, ({ one }) => ({
+  user: one(users, {
+    fields: [integrations.userId],
+    references: [users.id],
+  }),
+  credential: one(credentials, {
+    fields: [integrations.credentialId],
+    references: [credentials.id],
+  }),
 }));
 
 export const workflowsRelations = relations(workflows, ({ one, many }) => ({

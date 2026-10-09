@@ -5,3 +5,5 @@ export * from './ai-types.js';
 export * from './mcp-types.js';
 export * from './agent-types.js';
 export * from './canonical.js';
+export * from './integration-types.js';
+export * from './workflow-templates.js';

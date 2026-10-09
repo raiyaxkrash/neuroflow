@@ -5,3 +5,4 @@ export * from './queue/job-queue.js';
 export * from './ai/index.js';
 export * from './agents/approval-service.js';
 export * from './agents/memory-service.js';
+export * from './scheduler/scheduler-engine.js';

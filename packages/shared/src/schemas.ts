@@ -309,4 +309,114 @@ export const ReviewApprovalSchema = z.object({
   reason: z.string().max(500).optional(),
 });
 
+// Phase 4: Integration Node Parameter Schemas
+
+// Telegram Schemas
+export const TelegramMessageTriggerParametersSchema = z.object({
+  chatTypes: z.array(z.enum(['private', 'group', 'supergroup', 'channel'])).default(['private']),
+  requireText: z.boolean().default(true),
+  allowedUserIds: z.array(z.union([z.string(), z.number()])).default([]),
+  allowedChatIds: z.array(z.union([z.string(), z.number()])).default([]),
+});
+
+export const TelegramCommandTriggerParametersSchema = z.object({
+  command: z.string().min(1).default('/start'),
+  allowedUserIds: z.array(z.union([z.string(), z.number()])).default([]),
+  allowedChatIds: z.array(z.union([z.string(), z.number()])).default([]),
+});
+
+export const TelegramSendMessageParametersSchema = z.object({
+  chatId: z.union([z.string(), z.number()]).default(''),
+  text: z.string().default(''),
+  parseMode: z.enum(['Markdown', 'MarkdownV2', 'HTML']).default('Markdown'),
+  replyToMessageId: z.union([z.string(), z.number()]).optional(),
+  inlineKeyboard: z.any().optional(),
+});
+
+export const TelegramSendDocumentParametersSchema = z.object({
+  chatId: z.union([z.string(), z.number()]).default(''),
+  caption: z.string().optional(),
+  filename: z.string().optional(),
+  documentUrl: z.string().optional(),
+  documentBase64: z.string().optional(),
+  parseMode: z.enum(['Markdown', 'MarkdownV2', 'HTML']).default('Markdown'),
+});
+
+// GitHub Schemas
+export const GitHubEventTriggerParametersSchema = z.object({
+  events: z.array(z.string()).default(['issues', 'pull_request', 'push']),
+  repository: z.string().optional(),
+});
+
+export const GitHubGetIssueParametersSchema = z.object({
+  owner: z.string().default(''),
+  repo: z.string().default(''),
+  issueNumber: z.union([z.string(), z.number()]).default(1),
+});
+
+export const GitHubCreateIssueParametersSchema = z.object({
+  owner: z.string().default(''),
+  repo: z.string().default(''),
+  title: z.string().default(''),
+  body: z.string().optional(),
+  labels: z.array(z.string()).optional(),
+  requiresApproval: z.boolean().default(false),
+});
+
+// Discord Schemas
+export const DiscordTriggerParametersSchema = z.object({
+  channelIds: z.array(z.string()).default([]),
+  guildIds: z.array(z.string()).default([]),
+  requirePrefix: z.string().optional(),
+});
+
+export const DiscordSendMessageParametersSchema = z.object({
+  channelId: z.string().default(''),
+  content: z.string().default(''),
+  embeds: z.any().optional(),
+});
+
+// Filesystem Schemas
+export const ReadFileParametersSchema = z.object({
+  filePath: z.string().default(''),
+  encoding: z.enum(['utf-8', 'json', 'base64']).default('utf-8'),
+});
+
+export const WriteFileParametersSchema = z.object({
+  filePath: z.string().default(''),
+  content: z.any().default(''),
+  mode: z.enum(['overwrite', 'append']).default('overwrite'),
+  requiresApproval: z.boolean().default(false),
+});
+
+export const ListDirectoryParametersSchema = z.object({
+  directoryPath: z.string().default('.'),
+});
+
+export const FileChangedTriggerParametersSchema = z.object({
+  directoryPath: z.string().default('./data/storage'),
+  events: z.array(z.enum(['add', 'change', 'unlink'])).default(['add', 'change']),
+});
+
+// Scheduler & Webhook Schemas
+export const ScheduleTriggerParametersSchema = z.object({
+  mode: z.enum(['cron', 'interval', 'daily', 'weekly', 'exact_date']).default('daily'),
+  cronExpression: z.string().optional().default('0 9 * * *'),
+  intervalMinutes: z.number().int().min(1).max(10080).optional().default(60),
+  timeOfDay: z.string().optional().default('09:00'),
+  daysOfWeek: z.array(z.number().min(0).max(6)).optional().default([1, 2, 3, 4, 5]),
+  exactDateTime: z.string().optional(),
+  timezone: z.string().default('Europe/Moscow'),
+});
+
+export const WebhookTriggerParametersSchema = z.object({
+  httpMethod: z.enum(['GET', 'POST', 'ANY']).default('POST'),
+  authType: z.enum(['none', 'bearer', 'hmac']).default('none'),
+  authSecret: z.string().optional(),
+  hmacHeader: z.string().default('x-signature'),
+  responseStatus: z.number().int().default(200),
+  customResponse: z.any().optional(),
+});
+
+
 

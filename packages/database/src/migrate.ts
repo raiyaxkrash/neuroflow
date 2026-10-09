@@ -200,6 +200,23 @@ export async function runMigrations() {
     )`,
     sql`CREATE INDEX IF NOT EXISTS agent_execution_logs_exec_id_idx ON agent_execution_logs(execution_id)`,
     sql`CREATE INDEX IF NOT EXISTS agent_execution_logs_node_id_idx ON agent_execution_logs(node_id)`,
+
+    sql`CREATE TABLE IF NOT EXISTS integrations (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      service_type TEXT NOT NULL,
+      credential_id UUID REFERENCES credentials(id) ON DELETE SET NULL,
+      settings JSONB NOT NULL DEFAULT '{}'::jsonb,
+      status TEXT NOT NULL DEFAULT 'disconnected',
+      last_tested_at TIMESTAMPTZ,
+      last_error TEXT,
+      is_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`,
+    sql`CREATE INDEX IF NOT EXISTS integrations_user_id_idx ON integrations(user_id)`,
+    sql`CREATE INDEX IF NOT EXISTS integrations_service_type_idx ON integrations(service_type)`,
   ];
 
   for (const stmt of statements) {

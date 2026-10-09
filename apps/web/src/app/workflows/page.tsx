@@ -1,18 +1,21 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import React, { useState, useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import {
   Plus,
   GitFork,
   Search,
   Trash2,
-  Calendar,
   Layers,
   ArrowRight,
   Loader2,
   Sparkles,
+  LayoutTemplate,
+  Upload,
+  Download,
+  X,
 } from 'lucide-react';
 import { Sidebar } from '@/components/layout/sidebar';
 import { api } from '@/lib/api-client';
@@ -24,6 +27,10 @@ export default function WorkflowsPage() {
   const [search, setSearch] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
+  const [isTemplatesOpen, setIsTemplatesOpen] = useState(false);
+  const [templatesList, setTemplatesList] = useState<any[]>([]);
+
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
   const { data, isLoading } = useQuery({
     queryKey: ['workflows'],
@@ -31,6 +38,14 @@ export default function WorkflowsPage() {
   });
 
   const workflows = data?.workflows || [];
+
+  // Загрузка доступных шаблонов
+  useEffect(() => {
+    fetch(`${API_BASE}/api/workflows/templates`)
+      .then((res) => (res.ok ? res.json() : []))
+      .then((list) => setTemplatesList(list))
+      .catch(() => setTemplatesList([]));
+  }, [API_BASE]);
 
   const handleCreate = async () => {
     setIsCreating(true);
@@ -45,6 +60,68 @@ export default function WorkflowsPage() {
       alert(`Ошибка при создании: ${err.message}`);
     } finally {
       setIsCreating(false);
+    }
+  };
+
+  const handleInstantiateTemplate = async (templateId: string) => {
+    try {
+      const res = await fetch(`${API_BASE}/api/workflows/templates/${templateId}/instantiate`, {
+        method: 'POST',
+      });
+      if (res.ok) {
+        const created = await res.json();
+        setIsTemplatesOpen(false);
+        queryClient.invalidateQueries({ queryKey: ['workflows'] });
+        router.push(`/workflows/${created.id}`);
+      } else {
+        alert('Не удалось применить шаблон');
+      }
+    } catch (err: any) {
+      alert(`Ошибка: ${err.message}`);
+    }
+  };
+
+  const handleExport = async (id: string, name: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      const res = await fetch(`${API_BASE}/api/workflows/${id}/export`);
+      if (res.ok) {
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${name}.neuroflow.json`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+      }
+    } catch (err: any) {
+      alert(`Ошибка экспорта: ${err.message}`);
+    }
+  };
+
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      const res = await fetch(`${API_BASE}/api/workflows/import`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(parsed),
+      });
+
+      if (res.ok) {
+        const imported = await res.json();
+        queryClient.invalidateQueries({ queryKey: ['workflows'] });
+        router.push(`/workflows/${imported.id}`);
+      } else {
+        const err = await res.json();
+        alert(`Ошибка импорта: ${err.error || 'Неверный формат'}`);
+      }
+    } catch (err: any) {
+      alert(`Ошибка парсинга JSON: ${err.message}`);
     }
   };
 
@@ -75,11 +152,30 @@ export default function WorkflowsPage() {
               Сценарии автоматизации
             </h1>
             <p className="text-xs text-slate-400">
-              Создавайте, визуализируйте и запускайте распределенные рабочие процессы
+              Создавайте, визуализируйте и запускайте рабочие процессы
             </p>
           </div>
 
           <div className="flex items-center gap-2.5">
+            <button
+              onClick={() => setIsTemplatesOpen(true)}
+              className="flex items-center gap-2 px-3 py-2 rounded-xl bg-[#12141F] hover:bg-white/5 text-slate-300 border border-white/10 text-xs font-semibold transition-all cursor-pointer"
+            >
+              <LayoutTemplate className="w-4 h-4 text-purple-400" />
+              <span>Шаблоны</span>
+            </button>
+
+            <label className="flex items-center gap-2 px-3 py-2 rounded-xl bg-[#12141F] hover:bg-white/5 text-slate-300 border border-white/10 text-xs font-semibold transition-all cursor-pointer">
+              <Upload className="w-4 h-4 text-emerald-400" />
+              <span>Импорт</span>
+              <input
+                type="file"
+                accept=".json"
+                className="hidden"
+                onChange={handleImportFile}
+              />
+            </label>
+
             <button
               onClick={() => setIsAiModalOpen(true)}
               className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 border border-purple-500/30 text-xs font-semibold shadow-lg shadow-purple-500/10 transition-all cursor-pointer"
@@ -129,28 +225,14 @@ export default function WorkflowsPage() {
               <span className="text-sm">Загрузка сценариев...</span>
             </div>
           ) : filtered.length === 0 ? (
-            <div className="p-12 text-center rounded-2xl border border-white/10 bg-[#12141F]/40 max-w-md mx-auto my-12">
-              <div className="w-12 h-12 rounded-2xl bg-purple-600/10 border border-purple-500/20 flex items-center justify-center mx-auto mb-4 text-purple-400">
-                <GitFork className="w-6 h-6" />
-              </div>
-              <h3 className="text-sm font-semibold text-slate-200 mb-1">
-                {search ? 'Ничего не найдено' : 'Пока нет сценариев'}
-              </h3>
-              <p className="text-xs text-slate-400 mb-5 leading-relaxed">
+            <div className="flex flex-col items-center justify-center h-64 border border-dashed border-white/10 rounded-2xl p-8 text-center bg-[#12141F]/30">
+              <GitFork className="w-8 h-8 text-slate-600 mb-3" />
+              <h3 className="text-sm font-medium text-slate-300">Сценарии не найдены</h3>
+              <p className="text-xs text-slate-500 mt-1 max-w-sm">
                 {search
                   ? 'Попробуйте изменить поисковый запрос'
-                  : 'Создайте ваш первый визуальный сценарий автоматизации с ручным запуском, условиями и запросами.'}
+                  : 'Создайте свой первый рабочий процесс или выберите готовый шаблон'}
               </p>
-              {!search && (
-                <button
-                  onClick={handleCreate}
-                  disabled={isCreating}
-                  className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold transition-all inline-flex items-center gap-1.5"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Создать первый workflow</span>
-                </button>
-              )}
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -167,13 +249,22 @@ export default function WorkflowsPage() {
                         <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-purple-500/10 text-purple-300 border border-purple-500/20">
                           v{wf.version}
                         </span>
-                        <button
-                          onClick={(e) => handleDelete(wf.id, e)}
-                          title="Удалить"
-                          className="p-1 rounded-lg hover:bg-red-500/20 text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-all">
+                          <button
+                            onClick={(e) => handleExport(wf.id, wf.name, e)}
+                            title="Экспортировать JSON"
+                            className="p-1 rounded-lg hover:bg-white/10 text-slate-400 hover:text-slate-100 transition-all"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={(e) => handleDelete(wf.id, e)}
+                            title="Удалить"
+                            className="p-1 rounded-lg hover:bg-red-500/20 text-slate-500 hover:text-red-400 transition-all"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
 
                       <h3 className="text-sm font-semibold text-slate-100 group-hover:text-purple-300 transition-colors mb-1.5">
@@ -203,6 +294,58 @@ export default function WorkflowsPage() {
           )}
         </div>
       </main>
+
+      {/* Модальное окно готовых шаблонов */}
+      {isTemplatesOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-3xl bg-[#12141F] border border-white/10 rounded-2xl p-6 shadow-2xl space-y-6 max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between pb-3 border-b border-white/10 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <LayoutTemplate className="w-5 h-5 text-purple-400" />
+                <h3 className="text-base font-bold text-white">
+                  Библиотека готовых шаблонов
+                </h3>
+              </div>
+              <button
+                onClick={() => setIsTemplatesOpen(false)}
+                className="text-slate-400 hover:text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+              {templatesList.map((tpl) => (
+                <div
+                  key={tpl.id}
+                  className="p-4 rounded-xl border border-white/10 bg-[#181B2B] flex items-center justify-between hover:border-purple-500/40 transition-all"
+                >
+                  <div className="space-y-1 max-w-xl">
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-sm font-bold text-white">{tpl.name}</h4>
+                      <span className="text-2xs px-2 py-0.5 rounded bg-purple-500/10 text-purple-300 border border-purple-500/20 font-mono">
+                        {tpl.category}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-400 leading-relaxed">{tpl.description}</p>
+                    <div className="text-2xs text-slate-500 flex items-center gap-1 pt-1">
+                      <span>Требует credentials:</span>
+                      <span className="font-mono text-slate-400">{tpl.requiredCredentials.join(', ')}</span>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => handleInstantiateTemplate(tpl.id)}
+                    className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold shadow-md shadow-purple-600/20 transition-all shrink-0 cursor-pointer"
+                  >
+                    Использовать
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Модальное окно создания сценария с AI */}
       <AiGeneratorModal
