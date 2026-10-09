@@ -14,8 +14,8 @@ describe('Browser Network & Subresource Security (Phase 7 Hardening)', () => {
 
     for (const url of dangerousUrls) {
       const res = BrowserSecurity.validateUrl(url);
-      expect(res.allowed).toBe(false);
-      expect(res.reason).toBeDefined();
+      expect(res.valid).toBe(false);
+      expect(res.error).toBeDefined();
     }
   });
 
@@ -30,7 +30,7 @@ describe('Browser Network & Subresource Security (Phase 7 Hardening)', () => {
 
     for (const url of safeUrls) {
       const res = BrowserSecurity.validateUrl(url);
-      expect(res.allowed).toBe(true);
+      expect(res.valid).toBe(true);
     }
   });
 
@@ -43,7 +43,7 @@ describe('Browser Network & Subresource Security (Phase 7 Hardening)', () => {
 
     for (const url of maliciousUrls) {
       const res = BrowserSecurity.validateUrl(url);
-      expect(res.allowed).toBe(false);
+      expect(res.valid).toBe(false);
     }
   });
 });
