@@ -62,7 +62,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:4000/healthz | grep -q 'ok' || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:4000/healthz | grep -q 'ok' || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -93,7 +93,7 @@ services:
       redis:
         condition: service_healthy
       api:
-        condition: service_started
+        condition: service_healthy
     deploy:
       resources:
         limits:
@@ -114,9 +114,10 @@ services:
     networks:
       - neuroflow_public
     depends_on:
-      - api
+      api:
+        condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/ | grep -q 'NeuroFlow' || exit 0"]
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/ | grep -q 'NeuroFlow' || exit 0"]
       interval: 10s
       timeout: 5s
       retries: 5
