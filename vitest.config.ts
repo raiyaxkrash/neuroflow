@@ -13,6 +13,7 @@ export default defineConfig({
       '@neuroflow/database': path.resolve(__dirname, './packages/database/src/index.ts'),
       '@neuroflow/nodes': path.resolve(__dirname, './packages/nodes/src/index.ts'),
       '@neuroflow/workflow-engine': path.resolve(__dirname, './packages/workflow-engine/src/index.ts'),
+      '@neuroflow/mission-engine': path.resolve(__dirname, './packages/mission-engine/src/index.ts'),
     },
   },
 });
