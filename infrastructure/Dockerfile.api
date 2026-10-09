@@ -11,6 +11,7 @@ RUN pnpm --filter @neuroflow/shared build
 RUN pnpm --filter @neuroflow/database build
 RUN pnpm --filter @neuroflow/nodes build
 RUN pnpm --filter @neuroflow/workflow-engine build
+RUN pnpm --filter @neuroflow/mission-engine build
 RUN pnpm --filter @neuroflow/api build
 
 EXPOSE 4000
