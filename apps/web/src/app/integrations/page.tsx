@@ -16,9 +16,7 @@ import {
   Play,
   Square,
   Trash2,
-  ExternalLink,
   ShieldAlert,
-  Sliders,
   X,
 } from 'lucide-react';
 
@@ -99,9 +97,10 @@ export default function IntegrationsPage() {
 
   const handleOpenCreate = (item: IntegrationCatalogItem) => {
     setSelectedCatalogItem(item);
-    setFormName(`${item.name} Connection`);
+    setFormName(`${item.name} (${integrationsList.length + 1})`);
     setFormCredentials({});
     setFormSettings({});
+    setTestResult(null);
     setIsModalOpen(true);
   };
 
@@ -115,11 +114,10 @@ export default function IntegrationsPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: formName,
           serviceType: selectedCatalogItem.serviceType,
+          name: formName,
           credentials: formCredentials,
           settings: formSettings,
-          isEnabled: true,
         }),
       });
 
@@ -138,7 +136,6 @@ export default function IntegrationsPage() {
   };
 
   const handleTestConnection = async (id: string) => {
-    setTestResult(null);
     try {
       const res = await fetch(`${API_BASE}/api/integrations/${id}/test`, {
         method: 'POST',
@@ -147,22 +144,24 @@ export default function IntegrationsPage() {
       setTestResult({
         id,
         success: data.success,
-        message: data.message,
+        message: data.message || (data.success ? 'Подключение успешно!' : 'Ошибка подключения'),
       });
       await loadData();
     } catch (err: any) {
       setTestResult({
         id,
         success: false,
-        message: `Ошибка проверки: ${err.message}`,
+        message: err.message,
       });
     }
   };
 
   const handleDeleteIntegration = async (id: string) => {
-    if (!confirm('Удалить это подключение интеграции?')) return;
+    if (!confirm('Вы действительно хотите удалить эту интеграцию?')) return;
     try {
-      const res = await fetch(`${API_BASE}/api/integrations/${id}`, { method: 'DELETE' });
+      const res = await fetch(`${API_BASE}/api/integrations/${id}`, {
+        method: 'DELETE',
+      });
       if (res.ok) {
         await loadData();
       }
@@ -188,251 +187,248 @@ export default function IntegrationsPage() {
   const getServiceIcon = (type: string) => {
     switch (type) {
       case 'telegram':
-        return <Send className="w-5 h-5 text-[#0088CC]" />;
+        return <Send className="w-5 h-5 text-sky-500" />;
       case 'github':
-        return <Github className="w-5 h-5 text-white" />;
+        return <Github className="w-5 h-5 text-foreground" />;
       case 'discord':
-        return <MessageSquare className="w-5 h-5 text-[#5865F2]" />;
+        return <MessageSquare className="w-5 h-5 text-indigo-500" />;
       case 'filesystem':
-        return <Folder className="w-5 h-5 text-emerald-400" />;
+        return <Folder className="w-5 h-5 text-status-success" />;
       default:
-        return <Webhook className="w-5 h-5 text-purple-400" />;
+        return <Webhook className="w-5 h-5 text-primary" />;
     }
   };
 
   return (
-    <div className="flex-1 bg-[#090A0F] text-slate-100 min-h-screen overflow-y-auto p-8">
+    <div className="p-8 max-w-7xl mx-auto space-y-8 animate-in fade-in duration-200">
       {/* Header */}
-      <div className="max-w-6xl mx-auto space-y-8">
-        <div className="flex items-center justify-between pb-6 border-b border-white/10">
-          <div>
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400">
-                <Blocks className="w-6 h-6" />
-              </div>
-              <div>
-                <h1 className="text-xl font-bold tracking-tight text-white">Персональные интеграции</h1>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Подключение Telegram, GitHub, Discord, защищенной файловой песочницы и Webhooks
-                </p>
-              </div>
-            </div>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2 border-b border-border/60">
+        <div>
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+            Интеграции · Model Context Protocol & APIs
           </div>
-          <button
-            onClick={loadData}
-            className="flex items-center gap-2 px-3.5 py-1.5 rounded-lg border border-white/10 bg-[#12141F] hover:bg-white/5 text-xs text-slate-300 transition-colors"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-            <span>Обновить</span>
-          </button>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
+            MCP Hub & Интеграции
+          </h1>
+          <p className="text-xs text-muted-foreground mt-1">
+            Подключение серверов Model Context Protocol, Telegram, GitHub, Discord и защищенной файловой песочницы.
+          </p>
         </div>
 
-        {/* Текущие активные подключения */}
-        <div className="space-y-4">
-          <h2 className="text-sm font-semibold tracking-wide uppercase text-slate-400">
-            Активные подключения ({integrationsList.length})
-          </h2>
+        <button
+          onClick={loadData}
+          className="flex items-center gap-2 px-3.5 py-1.5 rounded-lg border border-border bg-card hover:bg-muted text-xs text-foreground transition-colors shadow-sm self-start md:self-auto"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+          <span>Обновить</span>
+        </button>
+      </div>
 
-          {integrationsList.length === 0 ? (
-            <div className="p-8 rounded-2xl border border-dashed border-white/10 bg-[#12141F]/40 text-center">
-              <Blocks className="w-10 h-10 text-slate-600 mx-auto mb-3" />
-              <div className="text-sm font-medium text-slate-300">Подключения пока не настроены</div>
-              <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-                Выберите сервис из каталога ниже, чтобы подключить Telegram бота, GitHub или файлы на компьютере.
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {integrationsList.map((item) => (
-                <div
-                  key={item.id}
-                  className="p-5 rounded-2xl border border-white/10 bg-[#12141F] flex flex-col justify-between hover:border-white/20 transition-all shadow-sm"
-                >
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-xl bg-white/5 border border-white/10">
-                          {getServiceIcon(item.serviceType)}
-                        </div>
-                        <div>
-                          <h3 className="text-sm font-bold text-white">{item.name}</h3>
-                          <div className="text-2xs font-mono text-slate-400 uppercase tracking-wider mt-0.5">
-                            {item.serviceType}
-                          </div>
-                        </div>
-                      </div>
+      {/* Текущие активные подключения */}
+      <div className="space-y-4">
+        <h2 className="text-sm font-semibold tracking-wide uppercase text-muted-foreground">
+          Активные подключения ({integrationsList.length})
+        </h2>
 
-                      {/* Статус бейдж */}
-                      <div className="flex items-center gap-2">
-                        {item.status === 'connected' ? (
-                          <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-2xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                            <CheckCircle2 className="w-3 h-3" /> Подключено
-                          </span>
-                        ) : item.status === 'error' ? (
-                          <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-2xs font-medium bg-rose-500/10 text-rose-400 border border-rose-500/20">
-                            <XCircle className="w-3 h-3" /> Ошибка
-                          </span>
-                        ) : (
-                          <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-2xs font-medium bg-slate-500/10 text-slate-400 border border-slate-500/20">
-                            <AlertCircle className="w-3 h-3" /> Отключено
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Результат проверки подключения */}
-                    {testResult && testResult.id === item.id && (
-                      <div
-                        className={`p-2.5 rounded-xl text-xs border ${
-                          testResult.success
-                            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
-                            : 'bg-rose-500/10 border-rose-500/30 text-rose-300'
-                        }`}
-                      >
-                        {testResult.message}
-                      </div>
-                    )}
-
-                    {item.lastError && (
-                      <div className="text-2xs text-rose-400 bg-rose-500/5 p-2 rounded-lg border border-rose-500/15">
-                        {item.lastError}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Кнопки действий */}
-                  <div className="flex items-center justify-between pt-4 mt-4 border-t border-white/5">
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => handleTestConnection(item.id)}
-                        className="px-3 py-1.5 rounded-lg border border-white/10 bg-[#181B2B] hover:bg-white/10 text-2xs font-medium text-slate-200 transition-colors"
-                      >
-                        Test Connection
-                      </button>
-
-                      {/* Для Telegram: кнопка Long Polling */}
-                      {item.serviceType === 'telegram' && (
-                        <button
-                          onClick={() => handleTogglePolling(item.id, !!pollingStatus[item.id])}
-                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-2xs font-medium border transition-colors ${
-                            pollingStatus[item.id]
-                              ? 'bg-amber-500/15 border-amber-500/30 text-amber-300 hover:bg-amber-500/20'
-                              : 'bg-cyan-500/15 border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/20'
-                          }`}
-                        >
-                          {pollingStatus[item.id] ? (
-                            <>
-                              <Square className="w-3 h-3" /> Остановить Polling
-                            </>
-                          ) : (
-                            <>
-                              <Play className="w-3 h-3" /> Запустить Polling
-                            </>
-                          )}
-                        </button>
-                      )}
-                    </div>
-
-                    <button
-                      onClick={() => handleDeleteIntegration(item.id)}
-                      className="p-1.5 text-slate-500 hover:text-rose-400 transition-colors"
-                      title="Удалить"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Каталог поддерживаемых сервисов */}
-        <div className="space-y-4 pt-4">
-          <h2 className="text-sm font-semibold tracking-wide uppercase text-slate-400">
-            Каталог сервисов для подключения
-          </h2>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {catalog.map((item) => (
+        {integrationsList.length === 0 ? (
+          <div className="p-8 rounded-xl border border-dashed border-border bg-card text-center shadow-sm">
+            <Blocks className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
+            <div className="text-sm font-medium text-foreground">Подключения пока не настроены</div>
+            <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
+              Выберите сервис из каталога ниже, чтобы подключить Telegram бота, GitHub или файлы на компьютере.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {integrationsList.map((item) => (
               <div
-                key={item.serviceType}
-                className="p-5 rounded-2xl border border-white/10 bg-[#12141F] flex flex-col justify-between hover:border-purple-500/40 transition-all group"
+                key={item.id}
+                className="p-5 rounded-xl border border-border bg-card flex flex-col justify-between hover:border-highlight/50 transition-colors shadow-sm"
               >
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <div className="p-2.5 rounded-xl bg-[#181B2B] border border-white/5">
-                      {getServiceIcon(item.serviceType)}
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-xl bg-muted border border-border">
+                        {getServiceIcon(item.serviceType)}
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-bold text-foreground">{item.name}</h3>
+                        <div className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider mt-0.5">
+                          {item.serviceType}
+                        </div>
+                      </div>
                     </div>
-                    <span className="text-2xs font-mono text-purple-400 px-2 py-0.5 rounded bg-purple-500/10 border border-purple-500/20">
-                      {item.category}
-                    </span>
+
+                    {/* Статус бейдж */}
+                    <div className="flex items-center gap-2">
+                      {item.status === 'connected' ? (
+                        <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-status-success-bg text-status-success border border-status-success-border">
+                          <CheckCircle2 className="w-3 h-3" /> Подключено
+                        </span>
+                      ) : item.status === 'error' ? (
+                        <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-status-error-bg text-status-error border border-status-error-border">
+                          <XCircle className="w-3 h-3" /> Ошибка
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-muted text-muted-foreground border border-border">
+                          <AlertCircle className="w-3 h-3" /> Отключено
+                        </span>
+                      )}
+                    </div>
                   </div>
 
-                  <div>
-                    <h3 className="text-sm font-bold text-white group-hover:text-purple-300 transition-colors">
-                      {item.name}
-                    </h3>
-                    <p className="text-xs text-slate-400 mt-1 line-clamp-3 leading-relaxed">
-                      {item.description}
-                    </p>
-                  </div>
+                  {/* Результат проверки подключения */}
+                  {testResult && testResult.id === item.id && (
+                    <div
+                      className={`p-2.5 rounded-lg text-xs border ${
+                        testResult.success
+                          ? 'bg-status-success-bg border-status-success-border text-status-success'
+                          : 'bg-status-error-bg border-status-error-border text-status-error'
+                      }`}
+                    >
+                      {testResult.message}
+                    </div>
+                  )}
 
-                  {/* Доступные узлы */}
-                  <div className="pt-2">
-                    <div className="text-2xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
-                      Доступные узлы:
+                  {item.lastError && (
+                    <div className="text-[10px] text-status-error bg-status-error-bg p-2 rounded-lg border border-status-error-border font-mono">
+                      {item.lastError}
                     </div>
-                    <div className="flex flex-wrap gap-1">
-                      {item.availableTriggers.map((tr) => (
-                        <span
-                          key={tr.id}
-                          className="text-2xs px-1.5 py-0.5 rounded bg-white/5 text-slate-300 border border-white/5"
-                        >
-                          ⚡ {tr.name}
-                        </span>
-                      ))}
-                      {item.availableActions.map((ac) => (
-                        <span
-                          key={ac.id}
-                          className="text-2xs px-1.5 py-0.5 rounded bg-white/5 text-slate-300 border border-white/5"
-                        >
-                          ⚙ {ac.name}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
+                  )}
                 </div>
 
-                <div className="pt-5 mt-4 border-t border-white/5">
+                {/* Кнопки действий */}
+                <div className="flex items-center justify-between pt-4 mt-4 border-t border-border">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleTestConnection(item.id)}
+                      className="px-3 py-1.5 rounded-lg border border-border bg-muted hover:bg-muted/80 text-[11px] font-medium text-foreground transition-colors"
+                    >
+                      Test Connection
+                    </button>
+
+                    {/* Для Telegram: кнопка Long Polling */}
+                    {item.serviceType === 'telegram' && (
+                      <button
+                        onClick={() => handleTogglePolling(item.id, !!pollingStatus[item.id])}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium border transition-colors ${
+                          pollingStatus[item.id]
+                            ? 'bg-status-warning-bg border-status-warning-border text-status-warning'
+                            : 'bg-secondary border-border text-foreground'
+                        }`}
+                      >
+                        {pollingStatus[item.id] ? (
+                          <>
+                            <Square className="w-3 h-3" /> Остановить Polling
+                          </>
+                        ) : (
+                          <>
+                            <Play className="w-3 h-3" /> Запустить Polling
+                          </>
+                        )}
+                      </button>
+                    )}
+                  </div>
+
                   <button
-                    onClick={() => handleOpenCreate(item)}
-                    className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold shadow-md shadow-purple-600/20 transition-all"
+                    onClick={() => handleDeleteIntegration(item.id)}
+                    className="p-1.5 text-muted-foreground hover:text-status-error transition-colors"
+                    title="Удалить"
                   >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Подключить {item.name}</span>
+                    <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
               </div>
             ))}
           </div>
+        )}
+      </div>
+
+      {/* Каталог поддерживаемых сервисов */}
+      <div className="space-y-4 pt-4">
+        <h2 className="text-sm font-semibold tracking-wide uppercase text-muted-foreground">
+          Каталог сервисов для подключения
+        </h2>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {catalog.map((item) => (
+            <div
+              key={item.serviceType}
+              className="p-5 rounded-xl border border-border bg-card flex flex-col justify-between hover:border-highlight/60 transition-colors group shadow-sm"
+            >
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="p-2.5 rounded-xl bg-muted border border-border">
+                    {getServiceIcon(item.serviceType)}
+                  </div>
+                  <span className="text-[10px] font-mono text-muted-foreground px-2 py-0.5 rounded bg-muted border border-border">
+                    {item.category}
+                  </span>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-bold text-foreground group-hover:text-primary transition-colors">
+                    {item.name}
+                  </h3>
+                  <p className="text-xs text-muted-foreground mt-1 line-clamp-3 leading-relaxed">
+                    {item.description}
+                  </p>
+                </div>
+
+                {/* Доступные узлы */}
+                <div className="pt-2">
+                  <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
+                    Доступные узлы:
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {item.availableTriggers.map((tr) => (
+                      <span
+                        key={tr.id}
+                        className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border font-mono"
+                      >
+                        ⚡ {tr.name}
+                      </span>
+                    ))}
+                    {item.availableActions.map((ac) => (
+                      <span
+                        key={ac.id}
+                        className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border font-mono"
+                      >
+                        ⚙ {ac.name}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-5 mt-4 border-t border-border">
+                <button
+                  onClick={() => handleOpenCreate(item)}
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-primary hover:opacity-90 text-primary-foreground text-xs font-semibold shadow-sm transition-opacity"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Подключить {item.name}</span>
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
       {/* Модальное окно настройки подключения */}
       {isModalOpen && selectedCatalogItem && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="w-full max-w-lg bg-[#12141F] border border-white/10 rounded-2xl p-6 shadow-2xl space-y-6">
-            <div className="flex items-center justify-between pb-3 border-b border-white/10">
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-lg bg-card border border-border rounded-2xl p-6 shadow-2xl space-y-6 text-card-foreground">
+            <div className="flex items-center justify-between pb-3 border-b border-border">
               <div className="flex items-center gap-2.5">
                 {getServiceIcon(selectedCatalogItem.serviceType)}
-                <h3 className="text-base font-bold text-white">
+                <h3 className="text-base font-bold text-foreground">
                   Настройка {selectedCatalogItem.name}
                 </h3>
               </div>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 hover:text-white transition-colors"
+                className="text-muted-foreground hover:text-foreground transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -440,7 +436,7 @@ export default function IntegrationsPage() {
 
             <form onSubmit={handleSaveIntegration} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1.5">
+                <label className="block text-xs font-medium text-foreground mb-1.5">
                   Название подключения
                 </label>
                 <input
@@ -448,7 +444,7 @@ export default function IntegrationsPage() {
                   required
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl bg-[#181B2B] border border-white/10 text-xs text-white focus:outline-none focus:border-purple-500"
+                  className="w-full px-3.5 py-2 rounded-xl bg-background border border-border text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                   placeholder="Мой Telegram Бот"
                 />
               </div>
@@ -456,8 +452,8 @@ export default function IntegrationsPage() {
               {/* Поля учетных данных */}
               {selectedCatalogItem.credentialFields.map((field) => (
                 <div key={field.key}>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">
-                    {field.label} {field.required && <span className="text-rose-400">*</span>}
+                  <label className="block text-xs font-medium text-foreground mb-1">
+                    {field.label} {field.required && <span className="text-status-error">*</span>}
                   </label>
                   <input
                     type={field.type}
@@ -467,23 +463,23 @@ export default function IntegrationsPage() {
                       setFormCredentials((prev) => ({ ...prev, [field.key]: e.target.value }))
                     }
                     placeholder={field.placeholder}
-                    className="w-full px-3.5 py-2 rounded-xl bg-[#181B2B] border border-white/10 text-xs font-mono text-white focus:outline-none focus:border-purple-500"
+                    className="w-full px-3.5 py-2 rounded-xl bg-background border border-border text-xs font-mono text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                   />
                   {field.helpText && (
-                    <p className="text-2xs text-slate-500 mt-1">{field.helpText}</p>
+                    <p className="text-[10px] text-muted-foreground mt-1">{field.helpText}</p>
                   )}
                 </div>
               ))}
 
               {/* Настройки безопасности и allowlist */}
               {selectedCatalogItem.serviceType === 'telegram' && (
-                <div className="p-3.5 rounded-xl bg-[#181B2B]/70 border border-white/5 space-y-3">
-                  <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-300">
-                    <ShieldAlert className="w-3.5 h-3.5 text-purple-400" />
+                <div className="p-3.5 rounded-xl bg-muted/40 border border-border space-y-3">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                    <ShieldAlert className="w-3.5 h-3.5 text-primary" />
                     <span>Безопасность и фильтрация (Allowlist)</span>
                   </div>
                   <div>
-                    <label className="block text-2xs font-medium text-slate-400 mb-1">
+                    <label className="block text-[10px] font-medium text-muted-foreground mb-1">
                       Разрешенные Telegram User ID (через запятую)
                     </label>
                     <input
@@ -493,9 +489,9 @@ export default function IntegrationsPage() {
                         const ids = e.target.value.split(',').map((s) => s.trim()).filter(Boolean);
                         setFormSettings((prev) => ({ ...prev, allowedUserIds: ids }));
                       }}
-                      className="w-full px-3 py-1.5 rounded-lg bg-[#12141F] border border-white/10 text-xs font-mono text-white"
+                      className="w-full px-3 py-1.5 rounded-lg bg-background border border-border text-xs font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                     />
-                    <p className="text-2xs text-slate-500 mt-1">
+                    <p className="text-[10px] text-muted-foreground mt-1">
                       Только указанные пользователи смогут отправлять команды и обращаться к AI.
                     </p>
                   </div>
@@ -503,8 +499,8 @@ export default function IntegrationsPage() {
               )}
 
               {selectedCatalogItem.serviceType === 'filesystem' && (
-                <div className="p-3.5 rounded-xl bg-[#181B2B]/70 border border-white/5 space-y-3">
-                  <label className="block text-2xs font-medium text-slate-400 mb-1">
+                <div className="p-3.5 rounded-xl bg-muted/40 border border-border space-y-3">
+                  <label className="block text-[10px] font-medium text-muted-foreground mb-1">
                     Разрешенные директории файловой песочницы (через запятую)
                   </label>
                   <input
@@ -514,26 +510,26 @@ export default function IntegrationsPage() {
                       const roots = e.target.value.split(',').map((s) => s.trim()).filter(Boolean);
                       setFormSettings((prev) => ({ ...prev, allowedRootPaths: roots }));
                     }}
-                    className="w-full px-3 py-1.5 rounded-lg bg-[#12141F] border border-white/10 text-xs font-mono text-white"
+                    className="w-full px-3 py-1.5 rounded-lg bg-background border border-border text-xs font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                   />
-                  <p className="text-2xs text-slate-500">
+                  <p className="text-[10px] text-muted-foreground">
                     AI-агенты и воркфлоу имеют доступ только к указанным папкам на диске.
                   </p>
                 </div>
               )}
 
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/10">
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 rounded-xl border border-white/10 text-xs font-medium text-slate-400 hover:text-white hover:bg-white/5"
+                  className="px-4 py-2 rounded-xl border border-border text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                 >
                   Отмена
                 </button>
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold shadow-md shadow-purple-600/30 transition-all disabled:opacity-50"
+                  className="px-5 py-2 rounded-xl bg-primary hover:opacity-90 text-primary-foreground text-xs font-semibold shadow-sm transition-opacity disabled:opacity-50"
                 >
                   {isSaving ? 'Сохранение...' : 'Сохранить подключение'}
                 </button>

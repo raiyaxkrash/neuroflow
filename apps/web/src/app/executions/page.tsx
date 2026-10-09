@@ -17,7 +17,6 @@ import {
   Lightbulb,
   Check,
 } from 'lucide-react';
-import { Sidebar } from '@/components/layout/sidebar';
 import { api } from '@/lib/api-client';
 
 export default function ExecutionsPage() {
@@ -70,21 +69,18 @@ export default function ExecutionsPage() {
   };
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[#090A0F]">
-      <Sidebar />
-
-      <main className="flex-1 flex flex-col h-full overflow-hidden">
-        <header className="h-16 border-b border-white/10 px-8 flex items-center justify-between shrink-0 bg-[#0D0E15]">
-          <div>
-            <h1 className="text-lg font-semibold text-white tracking-tight">История запусков</h1>
-            <p className="text-xs text-slate-400">
-              Мониторинг, логирование и аудит выполненных автоматизаций
-            </p>
-          </div>
-          <div className="text-xs text-slate-400">
-            Всего записей: <span className="font-semibold text-slate-200">{executionsList.length}</span>
-          </div>
-        </header>
+    <div className="flex-1 flex flex-col h-full overflow-hidden bg-background text-foreground transition-colors">
+      <header className="h-16 border-b border-border px-8 flex items-center justify-between shrink-0 bg-card">
+        <div>
+          <h1 className="text-base font-semibold text-foreground tracking-tight">История запусков</h1>
+          <p className="text-xs text-muted-foreground">
+            Мониторинг, логирование и аудит выполненных автоматизаций
+          </p>
+        </div>
+        <div className="text-xs text-muted-foreground font-mono">
+          Всего записей: <span className="font-semibold text-foreground">{executionsList.length}</span>
+        </div>
+      </header>
 
         <div className="flex-1 flex overflow-hidden">
           {/* Таблица / Список запусков */}
@@ -116,24 +112,24 @@ export default function ExecutionsPage() {
                       onClick={() => setSelectedExecutionId(exec.id)}
                       className={`flex items-center justify-between p-4 rounded-xl border transition-all cursor-pointer ${
                         selectedExecutionId === exec.id
-                          ? 'bg-[#181B2B] border-purple-500/50 shadow-md'
+                          ? 'bg-secondary border-border border-l-2 border-l-highlight shadow-sm'
                           : isWaiting
-                          ? 'bg-[#181B2B] border-amber-500/40 shadow-md shadow-amber-500/10'
-                          : 'bg-[#12141F] border-white/5 hover:border-white/10 hover:bg-[#151826]'
+                          ? 'bg-status-warning-bg/40 border-status-warning-border shadow-sm'
+                          : 'bg-card border-border hover:bg-muted/40 shadow-sm'
                       }`}
                     >
                       <div className="flex items-center gap-3.5">
                         <div
                           className={`w-8 h-8 rounded-lg flex items-center justify-center ${
                             isWaiting
-                              ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20 animate-pulse'
+                              ? 'bg-status-warning-bg text-status-warning border border-status-warning-border animate-pulse'
                               : isSuccess
-                              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                              ? 'bg-status-success-bg text-status-success border border-status-success-border'
                               : isFailed
-                              ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                              ? 'bg-status-error-bg text-status-error border border-status-error-border'
                               : isRunning
-                              ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 animate-pulse'
-                              : 'bg-zinc-500/10 text-zinc-400 border border-zinc-500/20'
+                              ? 'bg-status-warning-bg text-status-warning border border-status-warning-border animate-pulse'
+                              : 'bg-muted text-muted-foreground border border-border'
                           }`}
                         >
                           {isWaiting ? (
@@ -151,14 +147,14 @@ export default function ExecutionsPage() {
 
                         <div>
                           <div className="flex items-center gap-2">
-                            <span className="text-xs font-semibold text-slate-200 uppercase tracking-wide">
+                            <span className="text-xs font-semibold text-foreground uppercase tracking-wide">
                               {exec.status}
                             </span>
-                            <span className="text-[11px] font-mono text-slate-400">
+                            <span className="text-[11px] font-mono text-muted-foreground">
                               (v{exec.workflowVersion})
                             </span>
                           </div>
-                          <div className="text-[11px] text-slate-500 font-mono mt-0.5">
+                          <div className="text-[11px] text-muted-foreground font-mono mt-0.5">
                             ID: {exec.id}
                           </div>
                         </div>
@@ -166,14 +162,14 @@ export default function ExecutionsPage() {
 
                       <div className="flex items-center gap-6">
                         <div className="text-right text-xs">
-                          <div className="font-mono text-slate-300">
+                          <div className="font-mono text-foreground">
                             {exec.durationMs !== null ? `${exec.durationMs}ms` : '—'}
                           </div>
-                          <div className="text-[10px] text-slate-500">
+                          <div className="text-[10px] text-muted-foreground">
                             {new Date(exec.startedAt).toLocaleTimeString()}
                           </div>
                         </div>
-                        <ChevronRight className="w-4 h-4 text-slate-500" />
+                        <ChevronRight className="w-4 h-4 text-muted-foreground" />
                       </div>
                     </div>
                   );
@@ -184,12 +180,12 @@ export default function ExecutionsPage() {
 
           {/* Правая панель с подробностями выбранного запуска */}
           {selectedExecutionId && (
-            <aside className="w-96 border-l border-white/10 bg-[#12141F] flex flex-col h-full overflow-hidden">
-              <div className="p-4 border-b border-white/5 flex items-center justify-between">
-                <div className="font-semibold text-xs text-slate-200">Детали выполнения</div>
+            <aside className="w-96 border-l border-border bg-card flex flex-col h-full overflow-hidden text-card-foreground shadow-2xl">
+              <div className="p-4 border-b border-border flex items-center justify-between">
+                <div className="font-semibold text-xs text-foreground">Детали выполнения</div>
                 <button
                   onClick={() => setSelectedExecutionId(null)}
-                  className="p-1 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white"
+                  className="p-1 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -197,45 +193,45 @@ export default function ExecutionsPage() {
 
               <div className="flex-1 overflow-y-auto p-4 space-y-4">
                 {isDetailsLoading ? (
-                  <div className="p-8 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
-                    <Loader2 className="w-4 h-4 animate-spin text-purple-400" />
+                  <div className="p-8 text-center text-xs text-muted-foreground flex items-center justify-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin text-primary" />
                     <span>Загрузка данных запуска...</span>
                   </div>
                 ) : details ? (
                   <>
-                    <div className="p-3 rounded-xl bg-[#181B2B] border border-white/5 space-y-2 text-xs">
+                    <div className="p-3 rounded-xl bg-muted/40 border border-border space-y-2 text-xs">
                       <div className="flex justify-between">
-                        <span className="text-slate-400">Статус:</span>
-                        <span className="font-semibold capitalize text-purple-300">{details.status}</span>
+                        <span className="text-muted-foreground">Статус:</span>
+                        <span className="font-semibold capitalize text-primary">{details.status}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-slate-400">Время работы:</span>
-                        <span className="font-mono text-slate-200">{details.durationMs}ms</span>
+                        <span className="text-muted-foreground">Время работы:</span>
+                        <span className="font-mono text-foreground">{details.durationMs}ms</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-slate-400">Тип триггера:</span>
-                        <span className="text-slate-200 uppercase">{details.triggerType}</span>
+                        <span className="text-muted-foreground">Тип триггера:</span>
+                        <span className="text-foreground uppercase">{details.triggerType}</span>
                       </div>
                     </div>
 
                     {/* Блок Human-in-the-Loop подтверждения */}
                     {details.status === 'waiting_for_approval' && (
-                      <div className="p-4 rounded-xl bg-amber-950/20 border border-amber-500/40 space-y-3">
-                        <div className="flex items-center gap-2 text-xs font-semibold text-amber-300">
-                          <ShieldAlert className="w-4 h-4 text-amber-400 animate-bounce" />
+                      <div className="p-4 rounded-xl bg-status-warning-bg border border-status-warning-border space-y-3">
+                        <div className="flex items-center gap-2 text-xs font-semibold text-status-warning">
+                          <ShieldAlert className="w-4 h-4 text-status-warning animate-bounce" />
                           <span>Требуется одобрение оператора (Human-in-the-Loop)</span>
                         </div>
-                        <p className="text-xs text-slate-300 leading-relaxed">
+                        <p className="text-xs text-muted-foreground leading-relaxed">
                           Агент остановил сценарий перед выполнением чувствительной операции и ожидает вашего решения.
                         </p>
                         {details.outputPayload && (
-                          <div className="bg-[#12141F] p-2.5 rounded-lg border border-white/5 space-y-1 text-xs">
-                            <div className="text-slate-400">
-                              Действие: <strong className="text-slate-100">{details.outputPayload.title || details.outputPayload.toolName || 'Запрос действия'}</strong>
+                          <div className="bg-card p-2.5 rounded-lg border border-border space-y-1 text-xs">
+                            <div className="text-muted-foreground">
+                              Действие: <strong className="text-foreground">{details.outputPayload.title || details.outputPayload.toolName || 'Запрос действия'}</strong>
                             </div>
                             {details.outputPayload.consequences && (
-                              <div className="text-slate-400">
-                                Последствия: <span className="text-amber-200">{details.outputPayload.consequences}</span>
+                              <div className="text-muted-foreground">
+                                Последствия: <span className="text-status-warning">{details.outputPayload.consequences}</span>
                               </div>
                             )}
                           </div>
@@ -418,7 +414,6 @@ export default function ExecutionsPage() {
             </aside>
           )}
         </div>
-      </main>
     </div>
   );
 }
