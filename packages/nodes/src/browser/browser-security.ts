@@ -65,6 +65,21 @@ export class BrowserSecurity {
 
     const protocol = parsed.protocol.toLowerCase();
 
+    // Разрешаем безопасные inline data-uri для изображений и шрифтов
+    if (protocol === 'data:') {
+      if (trimmed.startsWith('data:image/') || trimmed.startsWith('data:font/')) {
+        return { valid: true, normalizedUrl: trimmed };
+      }
+      return {
+        valid: false,
+        error: 'Протокол data: разрешен только для безопасных inline-изображений и шрифтов',
+      };
+    }
+
+    if (protocol === 'blob:') {
+      return { valid: true, normalizedUrl: trimmed };
+    }
+
     // Разрешены строго http и https
     if (protocol !== 'http:' && protocol !== 'https:') {
       return {

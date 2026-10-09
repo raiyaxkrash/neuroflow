@@ -82,4 +82,24 @@ export async function desktopRoutes(fastify: FastifyInstance) {
       return reply.status(400).send({ error: err.message });
     }
   });
+
+  // 5. Экстренное отключение Companion Agent (Kill Switch)
+  fastify.post('/emergency-disable', {
+    schema: { tags: ['Desktop'], summary: 'Аварийное отключение Companion Agent' },
+    preHandler: authenticate,
+  }, async (_request, reply) => {
+    const companion = DesktopCompanionService.getInstance();
+    companion.setEmergencyDisable(true);
+    return reply.send({ success: true, message: 'Desktop Companion экстренно отключен.' });
+  });
+
+  // 6. Включение Companion Agent
+  fastify.post('/emergency-enable', {
+    schema: { tags: ['Desktop'], summary: 'Активация Companion Agent после аварийного отключения' },
+    preHandler: authenticate,
+  }, async (_request, reply) => {
+    const companion = DesktopCompanionService.getInstance();
+    companion.setEmergencyDisable(false);
+    return reply.send({ success: true, message: 'Desktop Companion активирован.' });
+  });
 }

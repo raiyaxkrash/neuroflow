@@ -17,6 +17,7 @@
     "@fastify/swagger-ui": "^5.2.2",
     "@neuroflow/database": "workspace:*",
     "@neuroflow/nodes": "workspace:*",
+    "@neuroflow/mission-engine": "workspace:*",
     "@neuroflow/shared": "workspace:*",
     "@neuroflow/workflow-engine": "workspace:*",
     "dotenv": "^16.4.7",

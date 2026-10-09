@@ -14,10 +14,12 @@ import {
   Cpu,
   ShieldCheck,
   Globe,
+  Target,
 } from 'lucide-react';
 
 const navigationItems = [
   { name: 'Overview', href: '/overview', icon: LayoutDashboard },
+  { name: 'Missions', href: '/missions', icon: Target },
   { name: 'Workflows', href: '/workflows', icon: GitFork },
   { name: 'Second Brain', href: '/knowledge', icon: Brain },
   { name: 'Browser Sessions', href: '/browser-sessions', icon: Globe },

@@ -414,6 +414,93 @@ export const tokenUsages = pgTable('token_usages', {
   index('token_usages_model_idx').on(table.model),
 ]);
 
+// Phase 7: Autonomous Mission Engine Tables
+
+// 1. Автономные миссии (Missions)
+export const missions = pgTable('missions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  title: text('title').notNull(),
+  goal: text('goal').notNull(),
+  description: text('description'),
+  status: text('status', {
+    enum: ['draft', 'planning', 'ready', 'running', 'waiting_for_approval', 'paused', 'completed', 'failed', 'cancelled'],
+  }).default('draft').notNull(),
+  plan: jsonb('plan').default({}).notNull(),
+  assignedAgents: jsonb('assigned_agents').default([]).notNull(),
+  allowedTools: jsonb('allowed_tools').default([]).notNull(),
+  tokenBudget: integer('token_budget').default(50000).notNull(),
+  tokensUsed: integer('tokens_used').default(0).notNull(),
+  costBudget: integer('cost_budget').default(0).notNull(),
+  costEstimated: integer('cost_estimated').default(0).notNull(),
+  deadline: timestamp('deadline', { withTimezone: true }),
+  finalResult: jsonb('final_result'),
+  error: text('error'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index('missions_user_id_idx').on(table.userId),
+  index('missions_status_idx').on(table.status),
+  index('missions_created_at_idx').on(table.createdAt),
+]);
+
+// 2. Подзадачи миссии (Mission Tasks)
+export const missionTasks = pgTable('mission_tasks', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  missionId: uuid('mission_id').references(() => missions.id, { onDelete: 'cascade' }).notNull(),
+  taskKey: text('task_key').notNull(),
+  title: text('title').notNull(),
+  description: text('description'),
+  assignedAgent: text('assigned_agent').default('General Agent').notNull(),
+  dependencies: jsonb('dependencies').default([]).notNull(),
+  status: text('status', {
+    enum: ['pending', 'running', 'completed', 'failed', 'skipped', 'waiting_for_approval'],
+  }).default('pending').notNull(),
+  inputData: jsonb('input_data').default({}).notNull(),
+  outputData: jsonb('output_data'),
+  criteria: jsonb('criteria').default([]).notNull(),
+  verificationResult: jsonb('verification_result'),
+  retryCount: integer('retry_count').default(0).notNull(),
+  maxRetries: integer('max_retries').default(3).notNull(),
+  tokensUsed: integer('tokens_used').default(0).notNull(),
+  startedAt: timestamp('started_at', { withTimezone: true }),
+  completedAt: timestamp('completed_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index('mission_tasks_mission_id_idx').on(table.missionId),
+  index('mission_tasks_task_key_idx').on(table.missionId, table.taskKey),
+  index('mission_tasks_status_idx').on(table.status),
+]);
+
+// 3. Контрольные точки миссии (Mission Checkpoints)
+export const missionCheckpoints = pgTable('mission_checkpoints', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  missionId: uuid('mission_id').references(() => missions.id, { onDelete: 'cascade' }).notNull(),
+  taskId: uuid('task_id').references(() => missionTasks.id, { onDelete: 'set null' }),
+  checkpointType: text('checkpoint_type').notNull(), // 'task_completed', 'pre_sensitive_action', 'manual_pause', 'periodic'
+  stateSnapshot: jsonb('state_snapshot').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index('mission_checkpoints_mission_id_idx').on(table.missionId),
+  index('mission_checkpoints_created_at_idx').on(table.createdAt),
+]);
+
+// 4. Журнал событий миссии (Mission Logs)
+export const missionLogs = pgTable('mission_logs', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  missionId: uuid('mission_id').references(() => missions.id, { onDelete: 'cascade' }).notNull(),
+  taskId: uuid('task_id').references(() => missionTasks.id, { onDelete: 'cascade' }),
+  agentId: text('agent_id'),
+  level: text('level').default('info').notNull(),
+  message: text('message').notNull(),
+  payload: jsonb('payload').default({}).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index('mission_logs_mission_id_idx').on(table.missionId),
+  index('mission_logs_created_at_idx').on(table.createdAt),
+]);
+
 // Связи Drizzle Relations
 export const usersRelations = relations(users, ({ many }) => ({
   workflows: many(workflows),
@@ -427,6 +514,48 @@ export const usersRelations = relations(users, ({ many }) => ({
   knowledgeEntities: many(knowledgeEntities),
   knowledgeRelations: many(knowledgeRelations),
   tokenUsages: many(tokenUsages),
+  missions: many(missions),
+}));
+
+export const missionsRelations = relations(missions, ({ one, many }) => ({
+  user: one(users, {
+    fields: [missions.userId],
+    references: [users.id],
+  }),
+  tasks: many(missionTasks),
+  checkpoints: many(missionCheckpoints),
+  logs: many(missionLogs),
+}));
+
+export const missionTasksRelations = relations(missionTasks, ({ one, many }) => ({
+  mission: one(missions, {
+    fields: [missionTasks.missionId],
+    references: [missions.id],
+  }),
+  checkpoints: many(missionCheckpoints),
+  logs: many(missionLogs),
+}));
+
+export const missionCheckpointsRelations = relations(missionCheckpoints, ({ one }) => ({
+  mission: one(missions, {
+    fields: [missionCheckpoints.missionId],
+    references: [missions.id],
+  }),
+  task: one(missionTasks, {
+    fields: [missionCheckpoints.taskId],
+    references: [missionTasks.id],
+  }),
+}));
+
+export const missionLogsRelations = relations(missionLogs, ({ one }) => ({
+  mission: one(missions, {
+    fields: [missionLogs.missionId],
+    references: [missions.id],
+  }),
+  task: one(missionTasks, {
+    fields: [missionLogs.taskId],
+    references: [missionTasks.id],
+  }),
 }));
 
 export const integrationsRelations = relations(integrations, ({ one }) => ({

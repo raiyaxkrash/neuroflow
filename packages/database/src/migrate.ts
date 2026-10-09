@@ -336,6 +336,80 @@ export async function runMigrations() {
     sql`ALTER TABLE agent_memories ADD COLUMN IF NOT EXISTS confidence INTEGER DEFAULT 100`,
     sql`ALTER TABLE agent_memories ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT TRUE`,
     sql`ALTER TABLE agent_memories ADD COLUMN IF NOT EXISTS provenance TEXT`,
+
+    // Phase 7: Autonomous Mission Engine Tables
+    sql`CREATE TABLE IF NOT EXISTS missions (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      title TEXT NOT NULL,
+      goal TEXT NOT NULL,
+      description TEXT,
+      status TEXT NOT NULL DEFAULT 'draft',
+      plan JSONB NOT NULL DEFAULT '{}'::jsonb,
+      assigned_agents JSONB NOT NULL DEFAULT '[]'::jsonb,
+      allowed_tools JSONB NOT NULL DEFAULT '[]'::jsonb,
+      token_budget INTEGER NOT NULL DEFAULT 50000,
+      tokens_used INTEGER NOT NULL DEFAULT 0,
+      cost_budget INTEGER NOT NULL DEFAULT 0,
+      cost_estimated INTEGER NOT NULL DEFAULT 0,
+      deadline TIMESTAMPTZ,
+      final_result JSONB,
+      error TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`,
+    sql`CREATE INDEX IF NOT EXISTS missions_user_id_idx ON missions(user_id)`,
+    sql`CREATE INDEX IF NOT EXISTS missions_status_idx ON missions(status)`,
+    sql`CREATE INDEX IF NOT EXISTS missions_created_at_idx ON missions(created_at)`,
+
+    sql`CREATE TABLE IF NOT EXISTS mission_tasks (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      mission_id UUID NOT NULL REFERENCES missions(id) ON DELETE CASCADE,
+      task_key TEXT NOT NULL,
+      title TEXT NOT NULL,
+      description TEXT,
+      assigned_agent TEXT NOT NULL DEFAULT 'General Agent',
+      dependencies JSONB NOT NULL DEFAULT '[]'::jsonb,
+      status TEXT NOT NULL DEFAULT 'pending',
+      input_data JSONB NOT NULL DEFAULT '{}'::jsonb,
+      output_data JSONB,
+      criteria JSONB NOT NULL DEFAULT '[]'::jsonb,
+      verification_result JSONB,
+      retry_count INTEGER NOT NULL DEFAULT 0,
+      max_retries INTEGER NOT NULL DEFAULT 3,
+      tokens_used INTEGER NOT NULL DEFAULT 0,
+      started_at TIMESTAMPTZ,
+      completed_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`,
+    sql`CREATE INDEX IF NOT EXISTS mission_tasks_mission_id_idx ON mission_tasks(mission_id)`,
+    sql`CREATE INDEX IF NOT EXISTS mission_tasks_task_key_idx ON mission_tasks(mission_id, task_key)`,
+    sql`CREATE INDEX IF NOT EXISTS mission_tasks_status_idx ON mission_tasks(status)`,
+
+    sql`CREATE TABLE IF NOT EXISTS mission_checkpoints (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      mission_id UUID NOT NULL REFERENCES missions(id) ON DELETE CASCADE,
+      task_id UUID REFERENCES mission_tasks(id) ON DELETE SET NULL,
+      checkpoint_type TEXT NOT NULL,
+      state_snapshot JSONB NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`,
+    sql`CREATE INDEX IF NOT EXISTS mission_checkpoints_mission_id_idx ON mission_checkpoints(mission_id)`,
+    sql`CREATE INDEX IF NOT EXISTS mission_checkpoints_created_at_idx ON mission_checkpoints(created_at)`,
+
+    sql`CREATE TABLE IF NOT EXISTS mission_logs (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      mission_id UUID NOT NULL REFERENCES missions(id) ON DELETE CASCADE,
+      task_id UUID REFERENCES mission_tasks(id) ON DELETE CASCADE,
+      agent_id TEXT,
+      level TEXT NOT NULL DEFAULT 'info',
+      message TEXT NOT NULL,
+      payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`,
+    sql`CREATE INDEX IF NOT EXISTS mission_logs_mission_id_idx ON mission_logs(mission_id)`,
+    sql`CREATE INDEX IF NOT EXISTS mission_logs_created_at_idx ON mission_logs(created_at)`,
   ];
 
   for (const stmt of statements) {

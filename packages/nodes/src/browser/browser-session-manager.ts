@@ -2,6 +2,7 @@ import { chromium, firefox, webkit, Browser, BrowserContext, Page } from 'playwr
 import { randomUUID } from 'node:crypto';
 import { BrowserActionLog, BrowserSessionSummary } from '@neuroflow/shared';
 import { encryptData, decryptData } from '@neuroflow/database';
+import { BrowserSecurity } from './browser-security.js';
 
 export interface CreateSessionOptions {
   browserType?: 'chromium' | 'firefox' | 'webkit';
@@ -69,6 +70,7 @@ export class BrowserSessionManager {
         '--no-sandbox',
         '--disable-setuid-sandbox',
         '--disable-dev-shm-usage',
+        '--disable-gpu',
         '--disable-blink-features=AutomationControlled',
       ],
     };
@@ -127,6 +129,33 @@ export class BrowserSessionManager {
       storageState,
       userAgent:
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36 NeuroFlow/1.0',
+    });
+
+    // Комплексный сетевой фильтр Playwright: блокировка SSRF в редиректах, iframes и подресурсах
+    await context.route('**/*', async (route) => {
+      const reqUrl = route.request().url();
+      const validation = BrowserSecurity.validateUrl(reqUrl, {
+        allowLocalhost: !!options.allowLocalhost,
+      });
+
+      if (!validation.valid) {
+        // Блокируем сетевой запрос
+        return route.abort('accessdenied').catch(() => {});
+      }
+
+      return route.continue().catch(() => {});
+    });
+
+    // Защита от опасных всплывающих окон (popups)
+    context.on('page', (popup) => {
+      popup.on('request', (req) => {
+        const val = BrowserSecurity.validateUrl(req.url(), {
+          allowLocalhost: !!options.allowLocalhost,
+        });
+        if (!val.valid) {
+          popup.close().catch(() => {});
+        }
+      });
     });
 
     const page = await context.newPage();

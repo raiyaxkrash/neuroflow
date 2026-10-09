@@ -124,6 +124,9 @@ export class DesktopCompanionService {
    * Фокусировка окна разрешенного процесса
    */
   public async focusWindow(targetProcess: string): Promise<{ success: boolean; message: string }> {
+    if (this.emergencyDisabled) {
+      throw new Error('Desktop Companion экстренно отключен через Kill Switch.');
+    }
     const cleanName = targetProcess.toLowerCase().replace(/\.exe$/, '').trim();
 
     if (!this.isProcessAllowed(cleanName)) {
@@ -170,6 +173,9 @@ export class DesktopCompanionService {
     targetProcess: string,
     keys: string
   ): Promise<{ success: boolean; sentLength: number }> {
+    if (this.emergencyDisabled) {
+      throw new Error('Desktop Companion экстренно отключен через Kill Switch.');
+    }
     const cleanName = targetProcess.toLowerCase().replace(/\.exe$/, '').trim();
 
     if (!this.isProcessAllowed(cleanName)) {
@@ -216,6 +222,16 @@ export class DesktopCompanionService {
     }
   }
 
+  private emergencyDisabled = false;
+
+  public setEmergencyDisable(disabled: boolean): void {
+    this.emergencyDisabled = disabled;
+  }
+
+  public isEmergencyDisabled(): boolean {
+    return this.emergencyDisabled;
+  }
+
   /**
    * Статус Companion Agent
    */
@@ -225,7 +241,18 @@ export class DesktopCompanionService {
       version: '1.0.0',
       platform: process.platform,
       isConfigured: true,
+      emergencyDisabled: this.emergencyDisabled,
       allowedProcesses: Array.from(this.allowedProcesses),
+      supportedCapabilities: [
+        'list_allowed_windows',
+        'focus_allowed_window',
+        'send_keystrokes_to_active_window',
+      ],
+      explicitLimitations: [
+        'No arbitrary shell execution (CMD/PowerShell scripts blocked)',
+        'No mouse control outside allowed processes',
+        'No file system tampering outside sandbox',
+      ],
     };
   }
 }
