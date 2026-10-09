@@ -11,6 +11,8 @@ import {
   Search,
   Plus,
   Sparkles,
+  Brain,
+  BookOpen,
 } from 'lucide-react';
 import { useWorkflowStore } from '@/store/workflow-store';
 
@@ -257,10 +259,84 @@ const availableNodes: NodeItem[] = [
     icon: <Clock className="w-4 h-4 text-emerald-400" />,
     color: '#10B981',
   },
+  // Phase 5 Second Brain & Knowledge Nodes
+  {
+    type: 'knowledge-search',
+    name: 'Knowledge Search',
+    description: 'Семантический и гибридный поиск по базе знаний Second Brain',
+    category: 'knowledge',
+    icon: <Search className="w-4 h-4 text-purple-400" />,
+    color: '#8B5CF6',
+  },
+  {
+    type: 'knowledge-insert',
+    name: 'Knowledge Insert',
+    description: 'Сохранение заметки или документа в базу знаний',
+    category: 'knowledge',
+    icon: <Database className="w-4 h-4 text-purple-400" />,
+    color: '#8B5CF6',
+  },
+  {
+    type: 'document-loader',
+    name: 'Document Loader',
+    description: 'Загрузка и парсинг локальных файлов (PDF/MD/JSON/CSV)',
+    category: 'knowledge',
+    icon: <BookOpen className="w-4 h-4 text-purple-400" />,
+    color: '#8B5CF6',
+  },
+  {
+    type: 'document-chunker',
+    name: 'Document Chunker',
+    description: 'Разбиение текста на смысловые фрагменты с перекрытием',
+    category: 'knowledge',
+    icon: <Sparkles className="w-4 h-4 text-purple-400" />,
+    color: '#8B5CF6',
+  },
+  {
+    type: 'embeddings-generator',
+    name: 'Embeddings',
+    description: 'Построение векторных эмбеддингов для фрагментов',
+    category: 'knowledge',
+    icon: <Sparkles className="w-4 h-4 text-purple-400" />,
+    color: '#8B5CF6',
+  },
+  {
+    type: 'rag-query',
+    name: 'RAG Query',
+    description: 'Сквозной RAG: извлечение контекста и ответ с цитатами',
+    category: 'knowledge',
+    icon: <Brain className="w-4 h-4 text-purple-400" />,
+    color: '#8B5CF6',
+  },
+  {
+    type: 'memory-read',
+    name: 'Memory Read',
+    description: 'Чтение из долговременной памяти (Episodic, Semantic)',
+    category: 'knowledge',
+    icon: <Brain className="w-4 h-4 text-purple-400" />,
+    color: '#8B5CF6',
+  },
+  {
+    type: 'memory-write',
+    name: 'Memory Write',
+    description: 'Запись фактов в память с проверкой подтверждения',
+    category: 'knowledge',
+    icon: <Brain className="w-4 h-4 text-purple-400" />,
+    color: '#8B5CF6',
+  },
+  {
+    type: 'knowledge-graph-query',
+    name: 'Graph Query',
+    description: 'Поиск сущностей и связей в графе знаний',
+    category: 'knowledge',
+    icon: <GitBranch className="w-4 h-4 text-purple-400" />,
+    color: '#8B5CF6',
+  },
 ];
 
 const categories = [
   { id: 'all', label: 'Все' },
+  { id: 'knowledge', label: 'База знаний' },
   { id: 'integrations', label: 'Интеграции' },
   { id: 'filesystem', label: 'Файлы' },
   { id: 'agent', label: 'Агенты & MCP' },

@@ -7,6 +7,7 @@ export default defineConfig({
     environment: 'node',
     testTimeout: 30000,
     hookTimeout: 30000,
+    fileParallelism: false,
     alias: {
       '@neuroflow/shared': path.resolve(__dirname, './packages/shared/src/index.ts'),
       '@neuroflow/database': path.resolve(__dirname, './packages/database/src/index.ts'),

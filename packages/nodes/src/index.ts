@@ -22,6 +22,8 @@ export * from './definitions/github-nodes.js';
 export * from './definitions/discord-nodes.js';
 export * from './definitions/filesystem-nodes.js';
 export * from './definitions/scheduler-nodes.js';
+export * from './definitions/knowledge-nodes.js';
+export * from './knowledge/index.js';
 export * from './integrations/index.js';
 export * from './mcp/index.js';
 export * from './tools/index.js';

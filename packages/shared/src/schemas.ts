@@ -418,5 +418,93 @@ export const WebhookTriggerParametersSchema = z.object({
   customResponse: z.any().optional(),
 });
 
+// Phase 5: Second Brain & Knowledge Nodes Schemas
+
+export const CreateKnowledgeSourceSchema = z.object({
+  name: z.string().min(1).max(100),
+  type: z.enum(['file', 'directory', 'git', 'github', 'execution_history', 'user_note', 'agent_output']),
+  pathOrUrl: z.string().optional(),
+  config: z.record(z.any()).default({}),
+});
+
+export const KnowledgeSearchParametersSchema = z.object({
+  query: z.string().default(''),
+  searchMode: z.enum(['hybrid', 'text', 'vector']).default('hybrid'),
+  limit: z.number().int().min(1).max(50).default(5),
+  sourceIds: z.array(z.string()).optional(),
+  minScore: z.number().min(0).max(1).default(0.3),
+});
+
+export const KnowledgeInsertParametersSchema = z.object({
+  title: z.string().default(''),
+  content: z.string().default(''),
+  sourceId: z.string().optional(),
+  metadata: z.record(z.any()).default({}),
+  chunkSize: z.number().int().min(100).max(5000).default(800),
+  chunkOverlap: z.number().int().min(0).max(1000).default(150),
+});
+
+export const DocumentLoaderParametersSchema = z.object({
+  sourceType: z.enum(['file_path', 'raw_text', 'url']).default('file_path'),
+  pathOrText: z.string().default(''),
+  encoding: z.enum(['utf-8', 'binary']).default('utf-8'),
+});
+
+export const DocumentChunkerParametersSchema = z.object({
+  chunkSize: z.number().int().min(100).max(5000).default(800),
+  chunkOverlap: z.number().int().min(0).max(1000).default(150),
+  strategy: z.enum(['recursive', 'sentence', 'fixed']).default('recursive'),
+});
+
+export const EmbeddingsGeneratorParametersSchema = z.object({
+  providerId: z.string().optional(),
+  model: z.string().default('default'),
+  batchSize: z.number().int().min(1).max(50).default(10),
+});
+
+export const RAGQueryParametersSchema = z.object({
+  question: z.string().default(''),
+  searchMode: z.enum(['hybrid', 'text', 'vector']).default('hybrid'),
+  maxChunks: z.number().int().min(1).max(20).default(5),
+  providerId: z.string().optional(),
+  model: z.string().default('default'),
+  temperature: z.number().min(0).max(1).default(0.2),
+  systemPrompt: z.string().optional(),
+  strictCitation: z.boolean().default(true),
+});
+
+export const MemoryReadParametersSchema = z.object({
+  scope: z.enum(['episodic', 'semantic', 'project', 'shared', 'execution', 'workflow', 'agent', 'user']).default('semantic'),
+  key: z.string().default(''),
+  query: z.string().optional(),
+  limit: z.number().int().min(1).max(50).default(10),
+});
+
+export const MemoryWriteParametersSchema = z.object({
+  scope: z.enum(['episodic', 'semantic', 'project', 'shared', 'execution', 'workflow', 'agent', 'user']).default('semantic'),
+  key: z.string().default(''),
+  value: z.any().default(''),
+  requiresApproval: z.boolean().default(false),
+  provenance: z.string().optional(),
+  confidence: z.number().int().min(0).max(100).default(100),
+  ttlSeconds: z.number().int().min(0).optional(),
+});
+
+export const KnowledgeGraphQueryParametersSchema = z.object({
+  query: z.string().default(''),
+  entityTypes: z.array(z.string()).optional(),
+  relationTypes: z.array(z.string()).optional(),
+  startEntityId: z.string().optional(),
+  maxDepth: z.number().int().min(1).max(5).default(2),
+});
+
+export const TokenBudgetConfigSchema = z.object({
+  dailyLimitTokens: z.number().int().min(0).default(1000000),
+  perExecutionLimitTokens: z.number().int().min(0).default(100000),
+  perAgentLimitTokens: z.number().int().min(0).default(50000),
+  actionOnLimit: z.enum(['warn', 'stop']).default('warn'),
+});
+
+
 
 

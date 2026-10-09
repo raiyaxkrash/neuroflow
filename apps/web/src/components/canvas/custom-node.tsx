@@ -30,6 +30,8 @@ import {
   Webhook,
   Terminal,
   FileUp,
+  Search,
+  BookOpen,
 } from 'lucide-react';
 import { useWorkflowStore } from '@/store/workflow-store';
 
@@ -64,6 +66,16 @@ const iconMap: Record<string, React.ReactNode> = {
   'write-file': <FileSignature className="w-4 h-4 text-emerald-400" />,
   'list-directory': <Folder className="w-4 h-4 text-emerald-400" />,
   'file-changed-trigger': <Clock className="w-4 h-4 text-emerald-400" />,
+  // Phase 5 Second Brain Nodes
+  'knowledge-search': <Search className="w-4 h-4 text-purple-400" />,
+  'knowledge-insert': <Database className="w-4 h-4 text-purple-400" />,
+  'document-loader': <BookOpen className="w-4 h-4 text-purple-400" />,
+  'document-chunker': <Sparkles className="w-4 h-4 text-purple-400" />,
+  'embeddings-generator': <Sparkles className="w-4 h-4 text-purple-400" />,
+  'rag-query': <Brain className="w-4 h-4 text-purple-400" />,
+  'memory-read': <Brain className="w-4 h-4 text-purple-400" />,
+  'memory-write': <Brain className="w-4 h-4 text-purple-400" />,
+  'knowledge-graph-query': <GitBranch className="w-4 h-4 text-purple-400" />,
 };
 
 const categoryLabels: Record<string, string> = {
@@ -96,6 +108,15 @@ const categoryLabels: Record<string, string> = {
   'write-file': 'Filesystem',
   'list-directory': 'Filesystem',
   'file-changed-trigger': 'Filesystem',
+  'knowledge-search': 'Knowledge',
+  'knowledge-insert': 'Knowledge',
+  'document-loader': 'Knowledge',
+  'document-chunker': 'Knowledge',
+  'embeddings-generator': 'Knowledge',
+  'rag-query': 'RAG',
+  'memory-read': 'Memory',
+  'memory-write': 'Memory',
+  'knowledge-graph-query': 'Graph',
 };
 
 export const CustomNode = memo(({ id, data, selected }: NodeProps) => {

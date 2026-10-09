@@ -15,6 +15,7 @@ import { approvalRoutes } from './routes/approvals.js';
 import { memoryRoutes } from './routes/memories.js';
 import { integrationRoutes } from './routes/integrations.js';
 import { webhookRoutes } from './routes/webhooks.js';
+import { knowledgeRoutes } from './routes/knowledge.js';
 import { SchedulerEngine } from '@neuroflow/workflow-engine';
 
 export async function buildServer(): Promise<FastifyInstance> {
@@ -134,6 +135,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   await server.register(memoryRoutes, { prefix: '/api/memories' });
   await server.register(integrationRoutes, { prefix: '/api/integrations' });
   await server.register(webhookRoutes, { prefix: '/api/webhooks' });
+  await server.register(knowledgeRoutes, { prefix: '/api/knowledge' });
 
   // Восстановление активных расписаний из базы данных
   server.addHook('onReady', async () => {

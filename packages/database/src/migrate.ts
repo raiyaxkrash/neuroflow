@@ -217,6 +217,125 @@ export async function runMigrations() {
     )`,
     sql`CREATE INDEX IF NOT EXISTS integrations_user_id_idx ON integrations(user_id)`,
     sql`CREATE INDEX IF NOT EXISTS integrations_service_type_idx ON integrations(service_type)`,
+
+    // Phase 5: Second Brain & Knowledge Tables
+    sql`CREATE TABLE IF NOT EXISTS knowledge_sources (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      type TEXT NOT NULL,
+      path_or_url TEXT,
+      config JSONB NOT NULL DEFAULT '{}'::jsonb,
+      status TEXT NOT NULL DEFAULT 'idle',
+      last_sync_at TIMESTAMPTZ,
+      last_error TEXT,
+      item_count INTEGER NOT NULL DEFAULT 0,
+      content_hash TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`,
+    sql`CREATE INDEX IF NOT EXISTS knowledge_sources_user_id_idx ON knowledge_sources(user_id)`,
+    sql`CREATE INDEX IF NOT EXISTS knowledge_sources_type_idx ON knowledge_sources(type)`,
+    sql`CREATE INDEX IF NOT EXISTS knowledge_sources_status_idx ON knowledge_sources(status)`,
+
+    sql`CREATE TABLE IF NOT EXISTS knowledge_documents (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      source_id UUID NOT NULL REFERENCES knowledge_sources(id) ON DELETE CASCADE,
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      title TEXT NOT NULL,
+      uri TEXT NOT NULL,
+      mime_type TEXT NOT NULL,
+      byte_size INTEGER NOT NULL,
+      content_hash TEXT NOT NULL,
+      version INTEGER NOT NULL DEFAULT 1,
+      status TEXT NOT NULL DEFAULT 'pending',
+      page_count INTEGER NOT NULL DEFAULT 1,
+      metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+      last_error TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`,
+    sql`CREATE INDEX IF NOT EXISTS knowledge_documents_source_id_idx ON knowledge_documents(source_id)`,
+    sql`CREATE INDEX IF NOT EXISTS knowledge_documents_user_id_idx ON knowledge_documents(user_id)`,
+    sql`CREATE INDEX IF NOT EXISTS knowledge_documents_hash_idx ON knowledge_documents(content_hash)`,
+
+    sql`CREATE TABLE IF NOT EXISTS knowledge_chunks (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      document_id UUID NOT NULL REFERENCES knowledge_documents(id) ON DELETE CASCADE,
+      source_id UUID NOT NULL REFERENCES knowledge_sources(id) ON DELETE CASCADE,
+      chunk_index INTEGER NOT NULL,
+      content TEXT NOT NULL,
+      page_number INTEGER,
+      start_char INTEGER,
+      end_char INTEGER,
+      content_hash TEXT NOT NULL,
+      embedding JSONB,
+      embedding_model TEXT,
+      embedding_dim INTEGER,
+      metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`,
+    sql`CREATE INDEX IF NOT EXISTS knowledge_chunks_doc_id_idx ON knowledge_chunks(document_id)`,
+    sql`CREATE INDEX IF NOT EXISTS knowledge_chunks_source_id_idx ON knowledge_chunks(source_id)`,
+    sql`CREATE INDEX IF NOT EXISTS knowledge_chunks_hash_idx ON knowledge_chunks(content_hash)`,
+
+    sql`CREATE TABLE IF NOT EXISTS knowledge_entities (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      source_id UUID REFERENCES knowledge_sources(id) ON DELETE SET NULL,
+      document_id UUID REFERENCES knowledge_documents(id) ON DELETE SET NULL,
+      name TEXT NOT NULL,
+      type TEXT NOT NULL,
+      description TEXT,
+      metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`,
+    sql`CREATE INDEX IF NOT EXISTS knowledge_entities_user_id_idx ON knowledge_entities(user_id)`,
+    sql`CREATE INDEX IF NOT EXISTS knowledge_entities_type_idx ON knowledge_entities(type)`,
+    sql`CREATE INDEX IF NOT EXISTS knowledge_entities_name_idx ON knowledge_entities(name)`,
+
+    sql`CREATE TABLE IF NOT EXISTS knowledge_relations (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      from_entity_id UUID NOT NULL REFERENCES knowledge_entities(id) ON DELETE CASCADE,
+      to_entity_id UUID NOT NULL REFERENCES knowledge_entities(id) ON DELETE CASCADE,
+      relation_type TEXT NOT NULL,
+      confidence INTEGER NOT NULL DEFAULT 100,
+      provenance TEXT,
+      status TEXT NOT NULL DEFAULT 'suggested',
+      verified_by UUID REFERENCES users(id) ON DELETE SET NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`,
+    sql`CREATE INDEX IF NOT EXISTS knowledge_relations_user_id_idx ON knowledge_relations(user_id)`,
+    sql`CREATE INDEX IF NOT EXISTS knowledge_relations_from_to_idx ON knowledge_relations(from_entity_id, to_entity_id)`,
+    sql`CREATE INDEX IF NOT EXISTS knowledge_relations_status_idx ON knowledge_relations(status)`,
+
+    sql`CREATE TABLE IF NOT EXISTS token_usages (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      provider_id TEXT,
+      model TEXT NOT NULL,
+      agent_id TEXT,
+      workflow_id UUID REFERENCES workflows(id) ON DELETE SET NULL,
+      execution_id UUID REFERENCES executions(id) ON DELETE SET NULL,
+      input_tokens INTEGER NOT NULL DEFAULT 0,
+      output_tokens INTEGER NOT NULL DEFAULT 0,
+      cached_tokens INTEGER NOT NULL DEFAULT 0,
+      total_tokens INTEGER NOT NULL DEFAULT 0,
+      estimated_cost_micros INTEGER NOT NULL DEFAULT 0,
+      is_estimated BOOLEAN NOT NULL DEFAULT FALSE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`,
+    sql`CREATE INDEX IF NOT EXISTS token_usages_user_id_idx ON token_usages(user_id)`,
+    sql`CREATE INDEX IF NOT EXISTS token_usages_created_at_idx ON token_usages(created_at)`,
+    sql`CREATE INDEX IF NOT EXISTS token_usages_model_idx ON token_usages(model)`,
+
+    // Расширение agent_memories
+    sql`ALTER TABLE agent_memories ADD COLUMN IF NOT EXISTS confidence INTEGER DEFAULT 100`,
+    sql`ALTER TABLE agent_memories ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT TRUE`,
+    sql`ALTER TABLE agent_memories ADD COLUMN IF NOT EXISTS provenance TEXT`,
   ];
 
   for (const stmt of statements) {

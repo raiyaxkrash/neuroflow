@@ -37,6 +37,7 @@ export enum NodeCategory {
   GITHUB = 'github',
   DISCORD = 'discord',
   FILESYSTEM = 'filesystem',
+  KNOWLEDGE = 'knowledge',
 }
 
 export enum HttpMethod {

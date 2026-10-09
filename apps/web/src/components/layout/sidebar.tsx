@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   GitFork,
   Blocks,
+  Brain,
   Activity,
   KeyRound,
   Settings,
@@ -17,6 +18,7 @@ import {
 const navigationItems = [
   { name: 'Overview', href: '/overview', icon: LayoutDashboard },
   { name: 'Workflows', href: '/workflows', icon: GitFork },
+  { name: 'Second Brain', href: '/knowledge', icon: Brain },
   { name: 'Integrations', href: '/integrations', icon: Blocks },
   { name: 'Executions', href: '/executions', icon: Activity },
   { name: 'Credentials', href: '/credentials', icon: KeyRound },

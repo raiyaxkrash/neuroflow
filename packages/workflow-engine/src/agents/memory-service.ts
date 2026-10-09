@@ -5,10 +5,11 @@ import {
   and,
   sql,
 } from '@neuroflow/database';
+import { LongTermMemoryScope } from '@neuroflow/shared';
 
 export interface SetMemoryOptions {
   userId: string;
-  scope: 'execution' | 'workflow' | 'agent' | 'user';
+  scope: LongTermMemoryScope;
   key: string;
   value: any;
   metadata?: Record<string, any>;
@@ -16,6 +17,9 @@ export interface SetMemoryOptions {
   agentId?: string;
   workflowId?: string;
   executionId?: string;
+  confidence?: number;
+  isVerified?: boolean;
+  provenance?: string;
 }
 
 export class AgentMemoryService {
@@ -24,7 +28,7 @@ export class AgentMemoryService {
    */
   public static async get(
     userId: string,
-    scope: 'execution' | 'workflow' | 'agent' | 'user',
+    scope: LongTermMemoryScope,
     key: string
   ): Promise<any | null> {
     const db = getDatabase();
@@ -34,7 +38,7 @@ export class AgentMemoryService {
       .where(
         and(
           eq(agentMemories.userId, userId),
-          eq(agentMemories.scope, scope),
+          eq(agentMemories.scope, scope as any),
           eq(agentMemories.key, key)
         )
       )
@@ -55,7 +59,20 @@ export class AgentMemoryService {
    * Сохранение или обновление факта в памяти агента.
    */
   public static async set(options: SetMemoryOptions): Promise<void> {
-    const { userId, scope, key, value, metadata = {}, ttlSeconds, agentId, workflowId, executionId } = options;
+    const {
+      userId,
+      scope,
+      key,
+      value,
+      metadata = {},
+      ttlSeconds,
+      agentId,
+      workflowId,
+      executionId,
+      confidence = 100,
+      isVerified = true,
+      provenance,
+    } = options;
     const db = getDatabase();
 
     const expiresAt = ttlSeconds ? new Date(Date.now() + ttlSeconds * 1000) : null;
@@ -67,7 +84,7 @@ export class AgentMemoryService {
       .where(
         and(
           eq(agentMemories.userId, userId),
-          eq(agentMemories.scope, scope),
+          eq(agentMemories.scope, scope as any),
           eq(agentMemories.key, key)
         )
       )
@@ -79,6 +96,9 @@ export class AgentMemoryService {
         .set({
           value: jsonValue,
           metadata,
+          confidence,
+          isVerified,
+          provenance: provenance || existing[0].provenance,
           expiresAt,
           updatedAt: new Date(),
         })
@@ -89,10 +109,13 @@ export class AgentMemoryService {
         agentId: agentId || null,
         workflowId: workflowId || null,
         executionId: executionId || null,
-        scope,
+        scope: scope as any,
         key,
         value: jsonValue,
         metadata,
+        confidence,
+        isVerified,
+        provenance: provenance || 'Автоматически сформировано агентом',
         expiresAt,
       });
     }
@@ -103,16 +126,16 @@ export class AgentMemoryService {
    */
   public static async delete(
     userId: string,
-    scope: 'execution' | 'workflow' | 'agent' | 'user',
+    scope: LongTermMemoryScope,
     key: string
   ): Promise<boolean> {
     const db = getDatabase();
-    const result = await db
+    await db
       .delete(agentMemories)
       .where(
         and(
           eq(agentMemories.userId, userId),
-          eq(agentMemories.scope, scope),
+          eq(agentMemories.scope, scope as any),
           eq(agentMemories.key, key)
         )
       );
@@ -121,36 +144,103 @@ export class AgentMemoryService {
   }
 
   /**
-   * Поиск записей в памяти агента.
+   * Поиск записей в памяти агента с фильтрацией по scope и ключевым словам.
    */
   public static async search(
     userId: string,
-    scope: 'execution' | 'workflow' | 'agent' | 'user',
+    scope: LongTermMemoryScope,
     query?: string,
     limit: number = 10
-  ): Promise<Array<{ key: string; value: any }>> {
+  ): Promise<Array<{ id: string; key: string; value: any; confidence: number; isVerified: boolean; provenance?: string }>> {
     const db = getDatabase();
     const rows = await db
       .select({
+        id: agentMemories.id,
         key: agentMemories.key,
         value: agentMemories.value,
+        confidence: agentMemories.confidence,
+        isVerified: agentMemories.isVerified,
+        provenance: agentMemories.provenance,
+        expiresAt: agentMemories.expiresAt,
       })
       .from(agentMemories)
       .where(
         and(
           eq(agentMemories.userId, userId),
-          eq(agentMemories.scope, scope)
+          eq(agentMemories.scope, scope as any)
         )
       )
-      .limit(limit);
+      .limit(limit * 2);
+
+    const now = new Date();
+    const validRows = rows.filter((r: any) => !r.expiresAt || new Date(r.expiresAt) > now);
 
     if (!query) {
-      return rows;
+      return validRows.slice(0, limit).map((r: any) => ({
+        id: r.id,
+        key: r.key,
+        value: r.value,
+        confidence: r.confidence || 100,
+        isVerified: Boolean(r.isVerified),
+        provenance: r.provenance || undefined,
+      }));
     }
 
     const lower = query.toLowerCase();
-    return rows.filter(
-      (r: any) => r.key.toLowerCase().includes(lower) || JSON.stringify(r.value).toLowerCase().includes(lower)
+    const matched = validRows.filter(
+      (r: any) =>
+        r.key.toLowerCase().includes(lower) ||
+        JSON.stringify(r.value).toLowerCase().includes(lower) ||
+        (r.provenance || '').toLowerCase().includes(lower)
     );
+
+    return matched.slice(0, limit).map((r: any) => ({
+      id: r.id,
+      key: r.key,
+      value: r.value,
+      confidence: r.confidence || 100,
+      isVerified: Boolean(r.isVerified),
+      provenance: r.provenance || undefined,
+    }));
+  }
+
+  /**
+   * Консолидация памяти (Memory Consolidation):
+   * Объединение нескольких разрозненных эпизодов (episodic) в долговременный семантический факт (semantic).
+   */
+  public static async consolidateMemories(params: {
+    userId: string;
+    sourcePrefix: string;
+    targetSemanticKey: string;
+    summaryFact: string;
+    provenance?: string;
+  }): Promise<{ consolidatedEpisodesCount: number; targetKey: string }> {
+    const db = getDatabase();
+    const episodes = await this.search(params.userId, 'episodic', params.sourcePrefix, 50);
+
+    if (episodes.length === 0) {
+      return { consolidatedEpisodesCount: 0, targetKey: params.targetSemanticKey };
+    }
+
+    // Сохранение консолидированного знания в semantic scope
+    await this.set({
+      userId: params.userId,
+      scope: 'semantic',
+      key: params.targetSemanticKey,
+      value: {
+        fact: params.summaryFact,
+        consolidatedAt: new Date().toISOString(),
+        basedOnEpisodesCount: episodes.length,
+      },
+      confidence: 95,
+      isVerified: true,
+      provenance: params.provenance || `Консолидировано из ${episodes.length} эпизодических записей`,
+    });
+
+    return {
+      consolidatedEpisodesCount: episodes.length,
+      targetKey: params.targetSemanticKey,
+    };
   }
 }
+

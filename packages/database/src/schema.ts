@@ -219,10 +219,13 @@ export const agentMemories = pgTable('agent_memories', {
   agentId: text('agent_id'),
   workflowId: uuid('workflow_id').references(() => workflows.id, { onDelete: 'cascade' }),
   executionId: uuid('execution_id').references(() => executions.id, { onDelete: 'cascade' }),
-  scope: text('scope', { enum: ['execution', 'workflow', 'agent', 'user'] }).notNull(),
+  scope: text('scope', { enum: ['execution', 'workflow', 'agent', 'user', 'episodic', 'semantic', 'project', 'shared'] }).notNull(),
   key: text('key').notNull(),
   value: jsonb('value').notNull(),
   metadata: jsonb('metadata').default({}).notNull(),
+  confidence: integer('confidence').default(100),
+  isVerified: boolean('is_verified').default(true),
+  provenance: text('provenance'),
   expiresAt: timestamp('expires_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
@@ -272,6 +275,145 @@ export const integrations = pgTable('integrations', {
   index('integrations_service_type_idx').on(table.serviceType),
 ]);
 
+// Phase 5: Second Brain & Knowledge Graph Tables
+
+// 1. Источники знаний (Knowledge Sources)
+export const knowledgeSources = pgTable('knowledge_sources', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  name: text('name').notNull(),
+  type: text('type', {
+    enum: ['file', 'directory', 'git', 'github', 'execution_history', 'user_note', 'agent_output'],
+  }).notNull(),
+  pathOrUrl: text('path_or_url'),
+  config: jsonb('config').default({}).notNull(),
+  status: text('status', {
+    enum: ['idle', 'indexing', 'indexed', 'error', 'requires_ocr'],
+  }).default('idle').notNull(),
+  lastSyncAt: timestamp('last_sync_at', { withTimezone: true }),
+  lastError: text('last_error'),
+  itemCount: integer('item_count').default(0).notNull(),
+  contentHash: text('content_hash'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index('knowledge_sources_user_id_idx').on(table.userId),
+  index('knowledge_sources_type_idx').on(table.type),
+  index('knowledge_sources_status_idx').on(table.status),
+]);
+
+// 2. Обработанные документы (Knowledge Documents)
+export const knowledgeDocuments = pgTable('knowledge_documents', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  sourceId: uuid('source_id').references(() => knowledgeSources.id, { onDelete: 'cascade' }).notNull(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  title: text('title').notNull(),
+  uri: text('uri').notNull(),
+  mimeType: text('mime_type').notNull(),
+  byteSize: integer('byte_size').notNull(),
+  contentHash: text('content_hash').notNull(),
+  version: integer('version').default(1).notNull(),
+  status: text('status', {
+    enum: ['pending', 'parsed', 'chunked', 'indexed', 'error', 'requires_ocr'],
+  }).default('pending').notNull(),
+  pageCount: integer('page_count').default(1).notNull(),
+  metadata: jsonb('metadata').default({}).notNull(),
+  lastError: text('last_error'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index('knowledge_documents_source_id_idx').on(table.sourceId),
+  index('knowledge_documents_user_id_idx').on(table.userId),
+  index('knowledge_documents_hash_idx').on(table.contentHash),
+]);
+
+// 3. Фрагменты документов (Knowledge Chunks)
+export const knowledgeChunks = pgTable('knowledge_chunks', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  documentId: uuid('document_id').references(() => knowledgeDocuments.id, { onDelete: 'cascade' }).notNull(),
+  sourceId: uuid('source_id').references(() => knowledgeSources.id, { onDelete: 'cascade' }).notNull(),
+  chunkIndex: integer('chunk_index').notNull(),
+  content: text('content').notNull(),
+  pageNumber: integer('page_number'),
+  startChar: integer('start_char'),
+  endChar: integer('end_char'),
+  contentHash: text('content_hash').notNull(),
+  embedding: jsonb('embedding'), // Массив number[] для переносимости и работы в PGlite/Postgres
+  embeddingModel: text('embedding_model'),
+  embeddingDim: integer('embedding_dim'),
+  metadata: jsonb('metadata').default({}).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index('knowledge_chunks_doc_id_idx').on(table.documentId),
+  index('knowledge_chunks_source_id_idx').on(table.sourceId),
+  index('knowledge_chunks_hash_idx').on(table.contentHash),
+]);
+
+// 4. Сущности Графа Знаний (Knowledge Entities)
+export const knowledgeEntities = pgTable('knowledge_entities', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  sourceId: uuid('source_id').references(() => knowledgeSources.id, { onDelete: 'set null' }),
+  documentId: uuid('document_id').references(() => knowledgeDocuments.id, { onDelete: 'set null' }),
+  name: text('name').notNull(),
+  type: text('type', {
+    enum: ['Project', 'Document', 'Repository', 'Person', 'Task', 'Decision', 'Technology', 'Event', 'Concept'],
+  }).notNull(),
+  description: text('description'),
+  metadata: jsonb('metadata').default({}).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index('knowledge_entities_user_id_idx').on(table.userId),
+  index('knowledge_entities_type_idx').on(table.type),
+  index('knowledge_entities_name_idx').on(table.name),
+]);
+
+// 5. Связи Графа Знаний (Knowledge Relations)
+export const knowledgeRelations = pgTable('knowledge_relations', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  fromEntityId: uuid('from_entity_id').references(() => knowledgeEntities.id, { onDelete: 'cascade' }).notNull(),
+  toEntityId: uuid('to_entity_id').references(() => knowledgeEntities.id, { onDelete: 'cascade' }).notNull(),
+  relationType: text('relation_type', {
+    enum: ['depends_on', 'belongs_to', 'created_by', 'references', 'related_to', 'supersedes', 'implements'],
+  }).notNull(),
+  confidence: integer('confidence').default(100).notNull(), // 0..100
+  provenance: text('provenance'),
+  status: text('status', {
+    enum: ['suggested', 'verified', 'rejected'],
+  }).default('suggested').notNull(),
+  verifiedBy: uuid('verified_by').references(() => users.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index('knowledge_relations_user_id_idx').on(table.userId),
+  index('knowledge_relations_from_to_idx').on(table.fromEntityId, table.toEntityId),
+  index('knowledge_relations_status_idx').on(table.status),
+]);
+
+// 6. Учет расхода токенов (Token Usages)
+export const tokenUsages = pgTable('token_usages', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  providerId: text('provider_id'),
+  model: text('model').notNull(),
+  agentId: text('agent_id'),
+  workflowId: uuid('workflow_id').references(() => workflows.id, { onDelete: 'set null' }),
+  executionId: uuid('execution_id').references(() => executions.id, { onDelete: 'set null' }),
+  inputTokens: integer('input_tokens').default(0).notNull(),
+  outputTokens: integer('output_tokens').default(0).notNull(),
+  cachedTokens: integer('cached_tokens').default(0).notNull(),
+  totalTokens: integer('total_tokens').default(0).notNull(),
+  estimatedCostMicros: integer('estimated_cost_micros').default(0).notNull(),
+  isEstimated: boolean('is_estimated').default(false).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index('token_usages_user_id_idx').on(table.userId),
+  index('token_usages_created_at_idx').on(table.createdAt),
+  index('token_usages_model_idx').on(table.model),
+]);
+
 // Связи Drizzle Relations
 export const usersRelations = relations(users, ({ many }) => ({
   workflows: many(workflows),
@@ -280,6 +422,11 @@ export const usersRelations = relations(users, ({ many }) => ({
   mcpServers: many(mcpServers),
   agentMemories: many(agentMemories),
   integrations: many(integrations),
+  knowledgeSources: many(knowledgeSources),
+  knowledgeDocuments: many(knowledgeDocuments),
+  knowledgeEntities: many(knowledgeEntities),
+  knowledgeRelations: many(knowledgeRelations),
+  tokenUsages: many(tokenUsages),
 }));
 
 export const integrationsRelations = relations(integrations, ({ one }) => ({
@@ -366,4 +513,88 @@ export const agentExecutionLogsRelations = relations(agentExecutionLogs, ({ one 
     references: [executions.id],
   }),
 }));
+
+export const knowledgeSourcesRelations = relations(knowledgeSources, ({ one, many }) => ({
+  user: one(users, {
+    fields: [knowledgeSources.userId],
+    references: [users.id],
+  }),
+  documents: many(knowledgeDocuments),
+  chunks: many(knowledgeChunks),
+  entities: many(knowledgeEntities),
+}));
+
+export const knowledgeDocumentsRelations = relations(knowledgeDocuments, ({ one, many }) => ({
+  source: one(knowledgeSources, {
+    fields: [knowledgeDocuments.sourceId],
+    references: [knowledgeSources.id],
+  }),
+  user: one(users, {
+    fields: [knowledgeDocuments.userId],
+    references: [users.id],
+  }),
+  chunks: many(knowledgeChunks),
+  entities: many(knowledgeEntities),
+}));
+
+export const knowledgeChunksRelations = relations(knowledgeChunks, ({ one }) => ({
+  document: one(knowledgeDocuments, {
+    fields: [knowledgeChunks.documentId],
+    references: [knowledgeDocuments.id],
+  }),
+  source: one(knowledgeSources, {
+    fields: [knowledgeChunks.sourceId],
+    references: [knowledgeSources.id],
+  }),
+}));
+
+export const knowledgeEntitiesRelations = relations(knowledgeEntities, ({ one, many }) => ({
+  user: one(users, {
+    fields: [knowledgeEntities.userId],
+    references: [users.id],
+  }),
+  source: one(knowledgeSources, {
+    fields: [knowledgeEntities.sourceId],
+    references: [knowledgeSources.id],
+  }),
+  document: one(knowledgeDocuments, {
+    fields: [knowledgeEntities.documentId],
+    references: [knowledgeDocuments.id],
+  }),
+  outgoingRelations: many(knowledgeRelations, { relationName: 'fromEntity' }),
+  incomingRelations: many(knowledgeRelations, { relationName: 'toEntity' }),
+}));
+
+export const knowledgeRelationsRelations = relations(knowledgeRelations, ({ one }) => ({
+  user: one(users, {
+    fields: [knowledgeRelations.userId],
+    references: [users.id],
+  }),
+  fromEntity: one(knowledgeEntities, {
+    fields: [knowledgeRelations.fromEntityId],
+    references: [knowledgeEntities.id],
+    relationName: 'fromEntity',
+  }),
+  toEntity: one(knowledgeEntities, {
+    fields: [knowledgeRelations.toEntityId],
+    references: [knowledgeEntities.id],
+    relationName: 'toEntity',
+  }),
+}));
+
+export const tokenUsagesRelations = relations(tokenUsages, ({ one }) => ({
+  user: one(users, {
+    fields: [tokenUsages.userId],
+    references: [users.id],
+  }),
+  workflow: one(workflows, {
+    fields: [tokenUsages.workflowId],
+    references: [workflows.id],
+  }),
+  execution: one(executions, {
+    fields: [tokenUsages.executionId],
+    references: [executions.id],
+  }),
+}));
+
 

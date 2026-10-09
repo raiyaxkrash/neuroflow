@@ -39,6 +39,17 @@ import {
   ScheduleTriggerNode,
   WebhookTriggerNode,
 } from './definitions/scheduler-nodes.js';
+import {
+  KnowledgeSearchNode,
+  KnowledgeInsertNode,
+  DocumentLoaderNode,
+  DocumentChunkerNode,
+  EmbeddingsGeneratorNode,
+  RAGQueryNode,
+  MemoryReadNode,
+  MemoryWriteNode,
+  KnowledgeGraphQueryNode,
+} from './definitions/knowledge-nodes.js';
 
 export class NodeRegistry {
   private nodes = new Map<string, INodeDefinition>();
@@ -88,6 +99,17 @@ export class NodeRegistry {
     // Scheduler & Webhook
     this.register(new ScheduleTriggerNode());
     this.register(new WebhookTriggerNode());
+
+    // Phase 5: Second Brain & Knowledge Nodes
+    this.register(new KnowledgeSearchNode());
+    this.register(new KnowledgeInsertNode());
+    this.register(new DocumentLoaderNode());
+    this.register(new DocumentChunkerNode());
+    this.register(new EmbeddingsGeneratorNode());
+    this.register(new RAGQueryNode());
+    this.register(new MemoryReadNode());
+    this.register(new MemoryWriteNode());
+    this.register(new KnowledgeGraphQueryNode());
   }
 
   public static getInstance(): NodeRegistry {
