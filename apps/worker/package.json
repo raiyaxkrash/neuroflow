@@ -1,0 +1,25 @@
+{
+  "name": "@neuroflow/worker",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@neuroflow/database": "workspace:*",
+    "@neuroflow/nodes": "workspace:*",
+    "@neuroflow/shared": "workspace:*",
+    "@neuroflow/workflow-engine": "workspace:*",
+    "bullmq": "^5.41.6",
+    "dotenv": "^16.4.7",
+    "ioredis": "^5.5.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.3",
+    "typescript": "^5.7.3"
+  }
+}

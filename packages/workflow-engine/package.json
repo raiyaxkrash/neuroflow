@@ -1,0 +1,23 @@
+{
+  "name": "@neuroflow/workflow-engine",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@neuroflow/database": "workspace:*",
+    "@neuroflow/nodes": "workspace:*",
+    "@neuroflow/shared": "workspace:*",
+    "bullmq": "^5.41.6",
+    "dotenv": "^16.4.7",
+    "drizzle-orm": "^0.39.3",
+    "ioredis": "^5.5.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  }
+}

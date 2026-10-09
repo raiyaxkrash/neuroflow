@@ -1,0 +1,24 @@
+{
+  "name": "neuroflow",
+  "version": "0.1.0",
+  "private": true,
+  "description": "NeuroFlow — Next-Gen Self-Hosted Automation Platform with Workflow Engine & AI Capabilities",
+  "scripts": {
+    "dev": "pnpm --parallel --filter \"@neuroflow/*\" dev",
+    "dev:api": "pnpm --filter @neuroflow/api dev",
+    "dev:worker": "pnpm --filter @neuroflow/worker dev",
+    "dev:web": "pnpm --filter @neuroflow/web dev",
+    "build": "pnpm --recursive run build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "db:migrate": "pnpm --filter @neuroflow/database db:migrate",
+    "db:generate": "pnpm --filter @neuroflow/database db:generate",
+    "typecheck": "pnpm --recursive run typecheck"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.4",
+    "typescript": "^5.7.3",
+    "vitest": "^2.1.8"
+  },
+  "packageManager": "pnpm@12.10.1"
+}
