@@ -8,6 +8,7 @@ import { authRoutes } from './routes/auth.js';
 import { nodeRoutes } from './routes/nodes.js';
 import { workflowRoutes } from './routes/workflows.js';
 import { executionRoutes } from './routes/executions.js';
+import { aiRoutes } from './routes/ai.js';
 
 export async function buildServer(): Promise<FastifyInstance> {
   const server = Fastify({
@@ -85,6 +86,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   await server.register(nodeRoutes, { prefix: '/api/nodes' });
   await server.register(workflowRoutes, { prefix: '/api/workflows' });
   await server.register(executionRoutes, { prefix: '/api/executions' });
+  await server.register(aiRoutes, { prefix: '/api/ai' });
 
   // Глобальный error handler
   server.setErrorHandler((error: any, request, reply) => {

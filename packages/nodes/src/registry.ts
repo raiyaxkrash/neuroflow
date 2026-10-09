@@ -6,6 +6,7 @@ import { ConditionNode } from './definitions/condition.js';
 import { SetDataNode } from './definitions/set-data.js';
 import { DelayNode } from './definitions/delay.js';
 import { OutputNode } from './definitions/output.js';
+import { AIModelNode } from './definitions/ai-model.js';
 
 export class NodeRegistry {
   private nodes = new Map<string, INodeDefinition>();
@@ -21,6 +22,11 @@ export class NodeRegistry {
     this.register(new SetDataNode());
     this.register(new DelayNode());
     this.register(new OutputNode());
+    this.register(new AIModelNode());
+  }
+
+  public static getInstance(): NodeRegistry {
+    return getNodeRegistry();
   }
 
   public register(node: INodeDefinition): void {
@@ -32,6 +38,10 @@ export class NodeRegistry {
 
   public getNode(type: string): INodeDefinition | undefined {
     return this.nodes.get(type);
+  }
+
+  public get(type: string): INodeDefinition | undefined {
+    return this.getNode(type);
   }
 
   public getAll(): INodeDefinition[] {

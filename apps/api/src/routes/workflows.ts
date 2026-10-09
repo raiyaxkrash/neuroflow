@@ -5,6 +5,8 @@ import {
   workflowVersions,
   executions,
   users,
+  eq,
+  desc,
 } from '@neuroflow/database';
 import {
   CreateWorkflowSchema,
@@ -15,7 +17,6 @@ import {
   WorkflowTriggerType,
 } from '@neuroflow/shared';
 import { WorkflowValidator, getWorkflowQueue } from '@neuroflow/workflow-engine';
-import { eq, desc } from 'drizzle-orm';
 
 export async function workflowRoutes(fastify: FastifyInstance) {
   // Аутентификация пользователя (JWT) с fallback на дефолтного пользователя

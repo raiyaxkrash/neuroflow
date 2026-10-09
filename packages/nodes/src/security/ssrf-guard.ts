@@ -8,17 +8,106 @@ export class SSRFError extends Error {
   }
 }
 
+export interface SSRFValidationOptions {
+  allowLocalOllama?: boolean;
+  allowedHosts?: string[];
+}
+
+/**
+ * Преобразует альтернативные форматы IPv4 (целое число, hex, octal) в стандартную точечно-десятичную нотацию.
+ * Возвращает нормализованную строку IP или null, если входные данные не являются числовым представлением IP.
+ */
+export function normalizeIpAddress(input: string): string | null {
+  const trimmed = input.trim().toLowerCase();
+
+  // 1. Стандартный IPv4 или IPv6
+  if (net.isIP(trimmed)) {
+    return trimmed;
+  }
+
+  // 2. Целое число (DWORD decimal): например 2130706433 -> 127.0.0.1
+  if (/^\d+$/.test(trimmed)) {
+    try {
+      const num = BigInt(trimmed);
+      if (num >= 0n && num <= 0xffffffffn) {
+        const b0 = Number((num >> 24n) & 0xffn);
+        const b1 = Number((num >> 16n) & 0xffn);
+        const b2 = Number((num >> 8n) & 0xffn);
+        const b3 = Number(num & 0xffn);
+        return `${b0}.${b1}.${b2}.${b3}`;
+      }
+    } catch {
+      // Игнорируем ошибку парсинга BigInt
+    }
+  }
+
+  // 3. Hexadecimal формат: например 0x7f000001
+  if (/^0x[0-9a-f]+$/i.test(trimmed)) {
+    try {
+      const num = BigInt(trimmed);
+      if (num >= 0n && num <= 0xffffffffn) {
+        const b0 = Number((num >> 24n) & 0xffn);
+        const b1 = Number((num >> 16n) & 0xffn);
+        const b2 = Number((num >> 8n) & 0xffn);
+        const b3 = Number(num & 0xffn);
+        return `${b0}.${b1}.${b2}.${b3}`;
+      }
+    } catch {
+      // Игнорируем
+    }
+  }
+
+  // 4. Частичные октальные/hex октеты в точечной нотации (например 0177.0.0.1 или 0x7f.0.0.1)
+  if (trimmed.includes('.')) {
+    const parts = trimmed.split('.');
+    if (parts.length >= 2 && parts.length <= 4) {
+      const parsedParts: number[] = [];
+      let valid = true;
+
+      for (const part of parts) {
+        if (/^0x[0-9a-f]+$/i.test(part)) {
+          parsedParts.push(parseInt(part, 16));
+        } else if (/^0[0-7]+$/.test(part)) {
+          parsedParts.push(parseInt(part, 8));
+        } else if (/^\d+$/.test(part)) {
+          parsedParts.push(parseInt(part, 10));
+        } else {
+          valid = false;
+          break;
+        }
+      }
+
+      if (valid && parsedParts.every((p) => p >= 0 && p <= 255)) {
+        // Дополняем до 4 октетов если указана сокращенная запись (например 127.1 -> 127.0.0.1)
+        if (parsedParts.length === 2) {
+          return `${parsedParts[0]}.0.0.${parsedParts[1]}`;
+        }
+        if (parsedParts.length === 3) {
+          return `${parsedParts[0]}.${parsedParts[1]}.0.${parsedParts[2]}`;
+        }
+        if (parsedParts.length === 4) {
+          return `${parsedParts[0]}.${parsedParts[1]}.${parsedParts[2]}.${parsedParts[3]}`;
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
 /**
  * Проверяет, является ли IP адрес частным, локальным, loopback или служебным (metadata).
  */
 export function isPrivateOrReservedIP(ip: string): boolean {
-  if (!net.isIP(ip)) {
+  const normalized = normalizeIpAddress(ip) || ip;
+
+  if (!net.isIP(normalized)) {
     return true; // Невалидный IP считается небезопасным
   }
 
   // IPv4 проверки
-  if (net.isIPv4(ip)) {
-    const parts = ip.split('.').map(Number);
+  if (net.isIPv4(normalized)) {
+    const parts = normalized.split('.').map(Number);
     const [b0, b1, b2, b3] = parts;
 
     // 0.0.0.0/8
@@ -31,7 +120,7 @@ export function isPrivateOrReservedIP(ip: string): boolean {
     if (b0 === 172 && b1 >= 16 && b1 <= 31) return true;
     // 192.168.0.0/16 (Private)
     if (b0 === 192 && b1 === 168) return true;
-    // 169.254.0.0/16 (Link-local / Cloud metadata AWS/GCP/Azure: 169.254.169.254)
+    // 169.254.0.0/16 (Link-local / Cloud metadata: 169.254.169.254)
     if (b0 === 169 && b1 === 254) return true;
     // 100.64.0.0/10 (Carrier-grade NAT)
     if (b0 === 100 && b1 >= 64 && b1 <= 127) return true;
@@ -46,17 +135,17 @@ export function isPrivateOrReservedIP(ip: string): boolean {
   }
 
   // IPv6 проверки
-  const normalized = ip.toLowerCase();
+  const normV6 = normalized.toLowerCase();
   // ::1 (Loopback)
-  if (normalized === '::1' || normalized === '::') return true;
+  if (normV6 === '::1' || normV6 === '::') return true;
   // Unique local addresses (fc00::/7)
-  if (normalized.startsWith('fc') || normalized.startsWith('fd')) return true;
+  if (normV6.startsWith('fc') || normV6.startsWith('fd')) return true;
   // Link-local addresses (fe80::/10)
-  if (normalized.startsWith('fe80:')) return true;
+  if (normV6.startsWith('fe80:')) return true;
   // IPv4-mapped IPv6 (::ffff:127.0.0.1 и т.д.)
-  if (normalized.includes('::ffff:')) {
-    const v4Part = normalized.split('::ffff:')[1];
-    if (v4Part && net.isIPv4(v4Part)) {
+  if (normV6.includes('::ffff:')) {
+    const v4Part = normV6.split('::ffff:')[1];
+    if (v4Part) {
       return isPrivateOrReservedIP(v4Part);
     }
   }
@@ -67,7 +156,10 @@ export function isPrivateOrReservedIP(ip: string): boolean {
 /**
  * Валидация URL на SSRF перед сетевым запросом
  */
-export async function validateUrlForSSRF(urlString: string): Promise<URL> {
+export async function validateUrlForSSRF(
+  urlString: string,
+  options: SSRFValidationOptions = {}
+): Promise<URL> {
   let url: URL;
   try {
     url = new URL(urlString);
@@ -81,6 +173,25 @@ export async function validateUrlForSSRF(urlString: string): Promise<URL> {
   }
 
   const hostname = url.hostname.toLowerCase();
+  const port = url.port || (url.protocol === 'https:' ? '443' : '80');
+
+  // Проверка доверенных адресов для локального Ollama или белого списка
+  const allowedHosts = [
+    ...(options.allowedHosts || []),
+    ...(process.env.ALLOWED_INTERNAL_HOSTS?.split(',').map((h) => h.trim().toLowerCase()) || []),
+  ];
+
+  if (options.allowLocalOllama) {
+    allowedHosts.push('localhost', '127.0.0.1', '::1', 'host.docker.internal');
+  }
+
+  const isExplicitlyAllowed = allowedHosts.some(
+    (h) => hostname === h || (options.allowLocalOllama && (hostname === 'localhost' || hostname === '127.0.0.1'))
+  );
+
+  if (isExplicitlyAllowed) {
+    return url;
+  }
 
   // Запрещенные служебные хосты
   const forbiddenHostnames = [
@@ -89,13 +200,22 @@ export async function validateUrlForSSRF(urlString: string): Promise<URL> {
     'metadata',
     'instance-data',
     '169.254.169.254',
+    'host.docker.internal',
   ];
 
   if (forbiddenHostnames.includes(hostname) || hostname.endsWith('.local') || hostname.endsWith('.internal')) {
     throw new SSRFError(`Обращение к хосту "${hostname}" заблокировано из соображений безопасности.`);
   }
 
-  // Если в качестве hostname напрямую передан IP
+  // Проверка альтернативных представлений IP (числовые, hex, octal)
+  const normalizedFromHost = normalizeIpAddress(hostname);
+  if (normalizedFromHost) {
+    if (isPrivateOrReservedIP(normalizedFromHost)) {
+      throw new SSRFError(`Обращение к зарезервированному/приватному IP "${hostname}" (${normalizedFromHost}) запрещено.`);
+    }
+    return url;
+  }
+
   if (net.isIP(hostname)) {
     if (isPrivateOrReservedIP(hostname)) {
       throw new SSRFError(`Обращение к зарезервированному/приватному IP "${hostname}" запрещено.`);

@@ -123,3 +123,91 @@ export const OutputParametersSchema = z.object({
   includeInputs: z.boolean().default(true),
   customKey: z.string().optional(),
 });
+
+// AI Model Node Schema
+export const AIModelParametersSchema = z.object({
+  providerId: z.string().optional(),
+  model: z.string().default('default'),
+  systemPrompt: z.string().optional().default(''),
+  userPrompt: z.string().default(''),
+  temperature: z.number().min(0).max(2).default(0.7),
+  maxTokens: z.number().int().min(1).max(32768).default(2048),
+  responseFormat: z.enum(['text', 'json']).default('text'),
+  timeoutMs: z.number().int().min(1000).max(120000).default(30000),
+  retryCount: z.number().int().min(0).max(5).default(2),
+});
+
+// AI Provider Schemas
+export const CreateAIProviderSchema = z.object({
+  name: z.string().min(1).max(100),
+  providerType: z.enum(['openai', 'gemini', 'anthropic', 'ollama', 'openai-compatible', 'custom-rest']),
+  apiProtocol: z.string().optional().default(''),
+  baseUrl: z.string().url().or(z.literal('')).optional(),
+  authType: z.enum(['bearer', 'api-key-header', 'basic', 'none', 'custom-headers']).default('bearer'),
+  apiKey: z.string().optional(),
+  customHeaders: z.record(z.string()).optional(),
+  customRequestPath: z.string().optional(),
+  customResponsePath: z.string().optional(),
+  customBodyTemplate: z.any().optional(),
+  defaultModelId: z.string().optional(),
+  availableModels: z.array(z.object({
+    id: z.string(),
+    name: z.string(),
+    contextWindow: z.number().optional(),
+    maxOutputTokens: z.number().optional(),
+  })).optional(),
+  settings: z.object({
+    temperature: z.number().min(0).max(2).optional(),
+    maxTokens: z.number().int().positive().optional(),
+    topP: z.number().min(0).max(1).optional(),
+    timeoutMs: z.number().int().positive().optional(),
+    retryCount: z.number().int().min(0).max(5).optional(),
+    allowLocalOllama: z.boolean().optional(),
+    customParams: z.record(z.any()).optional(),
+  }).optional().default({}),
+  isDefault: z.boolean().default(false),
+  isEnabled: z.boolean().default(true),
+});
+
+export const UpdateAIProviderSchema = CreateAIProviderSchema.partial();
+
+export const TestConnectionSchema = z.object({
+  providerType: z.enum(['openai', 'gemini', 'anthropic', 'ollama', 'openai-compatible', 'custom-rest']),
+  baseUrl: z.string().optional(),
+  authType: z.enum(['bearer', 'api-key-header', 'basic', 'none', 'custom-headers']).optional(),
+  apiKey: z.string().optional(),
+  customHeaders: z.record(z.string()).optional(),
+  model: z.string().optional(),
+  customRequestPath: z.string().optional(),
+  allowLocalOllama: z.boolean().optional(),
+});
+
+export const AIGenerateWorkflowSchema = z.object({
+  prompt: z.string().min(3).max(4000),
+  providerId: z.string().optional(),
+  model: z.string().optional(),
+  contextGraph: WorkflowGraphSchema.optional(),
+});
+
+export const AICopilotRequestSchema = z.object({
+  workflowId: z.string().optional(),
+  message: z.string().optional(),
+  history: z.array(z.any()).optional(),
+  selectedNodeId: z.string().optional(),
+  messages: z.array(z.object({
+    role: z.enum(['user', 'assistant', 'system']),
+    content: z.string(),
+    timestamp: z.string().optional(),
+    actions: z.array(z.any()).optional(),
+  })).optional().default([]),
+  currentGraph: WorkflowGraphSchema,
+  providerId: z.string().optional(),
+  model: z.string().optional(),
+});
+
+export const AIDebugRequestSchema = z.object({
+  executionId: z.string(),
+  failedNodeId: z.string().optional(),
+  providerId: z.string().optional(),
+});
+

@@ -13,6 +13,7 @@ import {
   Trash2,
   AlertCircle,
   Loader2,
+  Sparkles,
 } from 'lucide-react';
 import { useWorkflowStore } from '@/store/workflow-store';
 
@@ -23,6 +24,7 @@ const iconMap: Record<string, React.ReactNode> = {
   'set-data': <Database className="w-4 h-4 text-emerald-400" />,
   'delay': <Clock className="w-4 h-4 text-indigo-400" />,
   'output': <CheckCircle2 className="w-4 h-4 text-emerald-400" />,
+  'ai-model': <Sparkles className="w-4 h-4 text-pink-400" />,
 };
 
 const categoryLabels: Record<string, string> = {
@@ -32,6 +34,7 @@ const categoryLabels: Record<string, string> = {
   'set-data': 'Data',
   'delay': 'Utility',
   'output': 'Result',
+  'ai-model': 'AI / LLM',
 };
 
 export const CustomNode = memo(({ id, data, selected }: NodeProps) => {
@@ -116,6 +119,18 @@ export const CustomNode = memo(({ id, data, selected }: NodeProps) => {
           </div>
         )}
       </div>
+
+      {/* Инфо бейдж для AI узла */}
+      {nodeType === 'ai-model' && (
+        <div className="mb-2 px-2 py-1 rounded bg-[#181B2B] border border-white/5 flex items-center justify-between text-[10px]">
+          <span className="text-pink-300 font-mono truncate max-w-[130px]">
+            {((data.parameters as any)?.model) || 'gpt-4o-mini'}
+          </span>
+          <span className="text-slate-400 uppercase text-[9px] font-mono px-1.5 py-0.5 rounded bg-white/5">
+            {((data.parameters as any)?.provider) || 'openai'}
+          </span>
+        </div>
+      )}
 
       {/* Статус выполнения блока */}
       {status && (

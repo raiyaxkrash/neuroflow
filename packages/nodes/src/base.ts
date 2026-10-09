@@ -17,6 +17,7 @@ export interface NodeExecutionContext {
 
 export interface NodeExecutionOutput {
   outputData: any;
+  output?: any;
   selectedPort?: string; // Для ветвления: 'main', 'true', 'false', etc.
 }
 

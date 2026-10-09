@@ -57,4 +57,35 @@ export const api = {
   getExecution: (id: string) => fetchApi<any>(`/api/executions/${id}`),
   cancelExecution: (id: string) =>
     fetchApi<any>(`/api/executions/${id}/cancel`, { method: 'POST' }),
+
+  // AI Providers & Intelligent Features
+  getAIProviders: () => fetchApi<{ providers: any[]; total: number }>('/api/ai/providers'),
+  createAIProvider: (data: any) =>
+    fetchApi<any>('/api/ai/providers', { method: 'POST', body: JSON.stringify(data) }),
+  updateAIProvider: (id: string, data: any) =>
+    fetchApi<any>(`/api/ai/providers/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteAIProvider: (id: string) =>
+    fetchApi<{ success: boolean }>(`/api/ai/providers/${id}`, { method: 'DELETE' }),
+  testAIConnection: (data: any) =>
+    fetchApi<any>('/api/ai/providers/test', { method: 'POST', body: JSON.stringify(data) }),
+  testAIProvider: (id: string) =>
+    fetchApi<any>(`/api/ai/providers/${id}/test`, { method: 'POST' }),
+  getAIModels: (providerId: string) =>
+    fetchApi<{ models: any[]; total: number }>(`/api/ai/providers/${providerId}/models`),
+  generateWorkflow: (data: { prompt: string; providerId?: string; model?: string; contextGraph?: any }) =>
+    fetchApi<any>('/api/ai/generate-workflow', { method: 'POST', body: JSON.stringify(data) }),
+  copilot: (data: {
+    workflowId?: string;
+    message?: string;
+    history?: any[];
+    selectedNodeId?: string;
+    messages?: any[];
+    currentGraph: any;
+    providerId?: string;
+    model?: string;
+  }) => fetchApi<any>('/api/ai/copilot', { method: 'POST', body: JSON.stringify(data) }),
+  debugExecution: (data: string | { executionId: string; failedNodeId?: string; providerId?: string }) => {
+    const payload = typeof data === 'string' ? { executionId: data } : data;
+    return fetchApi<any>('/api/ai/debug', { method: 'POST', body: JSON.stringify(payload) });
+  },
 };

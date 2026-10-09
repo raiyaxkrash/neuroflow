@@ -1,10 +1,14 @@
 import { getDatabase } from './client.js';
 import { sql } from 'drizzle-orm';
 import crypto from 'node:crypto';
+import { hashPasswordSecure, verifyPasswordSecure } from './crypto.js';
 
 export function hashPassword(password: string): string {
-  const salt = 'neuroflow_salt_2026';
-  return crypto.pbkdf2Sync(password, salt, 1000, 64, 'sha512').toString('hex');
+  return hashPasswordSecure(password);
+}
+
+export function verifyPassword(password: string, hash: string): boolean {
+  return verifyPasswordSecure(password, hash);
 }
 
 export async function runMigrations() {
@@ -97,6 +101,29 @@ export async function runMigrations() {
       value JSONB NOT NULL,
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )`,
+
+    sql`CREATE TABLE IF NOT EXISTS ai_providers (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      provider_type TEXT NOT NULL,
+      api_protocol TEXT NOT NULL DEFAULT 'openai',
+      base_url TEXT,
+      auth_type TEXT NOT NULL DEFAULT 'bearer',
+      api_key_encrypted TEXT,
+      custom_headers_encrypted TEXT,
+      custom_request_path TEXT,
+      custom_response_path TEXT,
+      custom_body_template JSONB,
+      default_model_id TEXT,
+      available_models JSONB NOT NULL DEFAULT '[]'::jsonb,
+      settings JSONB NOT NULL DEFAULT '{}'::jsonb,
+      is_default BOOLEAN NOT NULL DEFAULT FALSE,
+      is_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`,
+    sql`CREATE INDEX IF NOT EXISTS ai_providers_user_id_idx ON ai_providers(user_id)`,
   ];
 
   for (const stmt of statements) {
@@ -105,8 +132,20 @@ export async function runMigrations() {
 
   // Создание администратора по умолчанию, если отсутствует
   const adminEmail = process.env.ADMIN_EMAIL || 'admin@neuroflow.local';
-  const adminPassword = process.env.ADMIN_PASSWORD || 'adminneuroflow';
-  const passwordHash = hashPassword(adminPassword);
+  let adminPassword = process.env.ADMIN_PASSWORD;
+
+  if (!adminPassword) {
+    if (process.env.NODE_ENV === 'production') {
+      // В production НЕ используем слабый захардкоженный пароль
+      adminPassword = crypto.randomBytes(16).toString('hex');
+      console.warn(`[SECURITY WARNING] ВНИМАНИЕ: Сгенерирован защищенный пароль администратора для ${adminEmail}: ${adminPassword}`);
+      console.warn(`[SECURITY WARNING] Сохраните этот пароль и измените его после первого входа.`);
+    } else {
+      adminPassword = 'adminneuroflow';
+    }
+  }
+
+  const passwordHash = hashPasswordSecure(adminPassword);
 
   const existing = await db.execute(sql`
     SELECT id FROM users WHERE email = ${adminEmail} LIMIT 1

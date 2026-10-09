@@ -1,7 +1,6 @@
 import { FastifyInstance } from 'fastify';
-import { getDatabase, users, hashPassword } from '@neuroflow/database';
+import { getDatabase, users, hashPassword, verifyPassword, eq } from '@neuroflow/database';
 import { LoginSchema, RegisterSchema } from '@neuroflow/shared';
-import { eq } from 'drizzle-orm';
 
 export async function authRoutes(fastify: FastifyInstance) {
   // Регистрация нового пользователя
@@ -76,8 +75,7 @@ export async function authRoutes(fastify: FastifyInstance) {
       return reply.status(401).send({ error: 'Неверный email или пароль' });
     }
 
-    const inputHash = hashPassword(password);
-    if (user.passwordHash !== inputHash) {
+    if (!verifyPassword(password, user.passwordHash)) {
       return reply.status(401).send({ error: 'Неверный email или пароль' });
     }
 

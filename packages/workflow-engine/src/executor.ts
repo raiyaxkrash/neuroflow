@@ -8,8 +8,7 @@ import {
 import { getNodeRegistry } from '@neuroflow/nodes';
 import { WorkflowValidator } from './validator.js';
 import { WorkflowExecutionContext } from './context.js';
-import { getDatabase, executions, nodeExecutions } from '@neuroflow/database';
-import { eq } from 'drizzle-orm';
+import { getDatabase, executions, nodeExecutions, eq } from '@neuroflow/database';
 
 export interface WorkflowExecutorEvents {
   onExecutionStart?: (executionId: string) => Promise<void> | void;

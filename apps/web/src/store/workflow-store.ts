@@ -55,6 +55,8 @@ interface WorkflowStore {
   updateNodeLabel: (nodeId: string, label: string) => void;
   duplicateNode: (nodeId: string) => void;
   deleteNode: (nodeId: string) => void;
+  setGraph: (nodes: Node[], edges: Edge[]) => void;
+  applyCopilotActions: (actions: any[]) => void;
 
   // History Undo/Redo
   pushHistory: () => void;
@@ -178,6 +180,7 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
       'set-data': 'Set Data',
       'delay': 'Delay',
       'output': 'Output',
+      'ai-model': 'AI Model',
     };
 
     const newNode: Node = {
@@ -253,6 +256,81 @@ export const useWorkflowStore = create<WorkflowStore>((set, get) => ({
       nodes: get().nodes.filter((n) => n.id !== nodeId),
       edges: get().edges.filter((e) => e.source !== nodeId && e.target !== nodeId),
       selectedNodeId: get().selectedNodeId === nodeId ? null : get().selectedNodeId,
+      isDirty: true,
+    });
+  },
+
+  setGraph: (newNodes, newEdges) => {
+    get().pushHistory();
+    set({
+      nodes: newNodes,
+      edges: newEdges,
+      isDirty: true,
+    });
+  },
+
+  applyCopilotActions: (actions) => {
+    if (!actions || actions.length === 0) return;
+    get().pushHistory();
+
+    let currentNodes = [...get().nodes];
+    let currentEdges = [...get().edges];
+
+    for (const act of actions) {
+      if (act.action === 'add_node') {
+        const id = act.id || `node_${act.type?.replace('-', '_')}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+        const newNode: Node = {
+          id,
+          type: 'custom',
+          position: act.position || {
+            x: 200 + currentNodes.length * 50,
+            y: 150 + (currentNodes.length % 3) * 60,
+          },
+          data: {
+            type: act.type,
+            label: act.label || act.type,
+            parameters: act.parameters || {},
+          },
+        };
+        currentNodes.push(newNode);
+      } else if (act.action === 'modify_node' && act.nodeId) {
+        currentNodes = currentNodes.map((n) => {
+          if (n.id === act.nodeId) {
+            return {
+              ...n,
+              data: {
+                ...n.data,
+                label: act.label !== undefined ? act.label : n.data.label,
+                parameters: {
+                  ...(n.data.parameters as Record<string, any>),
+                  ...(act.parameters || {}),
+                },
+              },
+            };
+          }
+          return n;
+        });
+      } else if (act.action === 'remove_node' && act.nodeId) {
+        currentNodes = currentNodes.filter((n) => n.id !== act.nodeId);
+        currentEdges = currentEdges.filter((e) => e.source !== act.nodeId && e.target !== act.nodeId);
+      } else if (act.action === 'connect_nodes' && act.source && act.target) {
+        const edgeId = `edge_${act.source}_${act.sourceHandle || 'main'}_to_${act.target}_${Date.now()}`;
+        const newEdge: Edge = {
+          id: edgeId,
+          source: act.source,
+          target: act.target,
+          sourceHandle: act.sourceHandle || 'main',
+          targetHandle: act.targetHandle || 'main',
+          type: 'smoothstep',
+          animated: false,
+        };
+        currentEdges.push(newEdge);
+      }
+    }
+
+    set({
+      nodes: currentNodes,
+      edges: currentEdges,
       isDirty: true,
     });
   },

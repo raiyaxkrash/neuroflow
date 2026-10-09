@@ -138,6 +138,31 @@ export const applicationSettings = pgTable('application_settings', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
+// Таблица AI провайдеров (Phase 2 & Addendum)
+export const aiProviders = pgTable('ai_providers', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  name: text('name').notNull(),
+  providerType: text('provider_type').notNull(), // 'openai' | 'gemini' | 'anthropic' | 'ollama' | 'openai-compatible' | 'custom-rest'
+  apiProtocol: text('api_protocol').default('openai').notNull(),
+  baseUrl: text('base_url'),
+  authType: text('auth_type').default('bearer').notNull(),
+  apiKeyEncrypted: text('api_key_encrypted'),
+  customHeadersEncrypted: text('custom_headers_encrypted'),
+  customRequestPath: text('custom_request_path'),
+  customResponsePath: text('custom_response_path'),
+  customBodyTemplate: jsonb('custom_body_template'),
+  defaultModelId: text('default_model_id'),
+  availableModels: jsonb('available_models').default([]).notNull(),
+  settings: jsonb('settings').default({}).notNull(),
+  isDefault: boolean('is_default').default(false).notNull(),
+  isEnabled: boolean('is_enabled').default(true).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index('ai_providers_user_id_idx').on(table.userId),
+]);
+
 // Связи Drizzle Relations
 export const usersRelations = relations(users, ({ many }) => ({
   workflows: many(workflows),

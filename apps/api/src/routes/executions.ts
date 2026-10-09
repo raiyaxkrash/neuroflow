@@ -4,10 +4,11 @@ import {
   executions,
   nodeExecutions,
   workflows,
+  eq,
+  desc,
 } from '@neuroflow/database';
 import { ExecutionStatus } from '@neuroflow/shared';
 import { getWorkflowQueue } from '@neuroflow/workflow-engine';
-import { eq, desc } from 'drizzle-orm';
 
 export async function executionRoutes(fastify: FastifyInstance) {
   // Список истории запусков

@@ -16,12 +16,14 @@ import {
 } from 'lucide-react';
 import { Sidebar } from '@/components/layout/sidebar';
 import { api } from '@/lib/api-client';
+import { AiGeneratorModal } from '@/components/editor/ai-generator-modal';
 
 export default function WorkflowsPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+  const [isAiModalOpen, setIsAiModalOpen] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ['workflows'],
@@ -77,18 +79,28 @@ export default function WorkflowsPage() {
             </p>
           </div>
 
-          <button
-            onClick={handleCreate}
-            disabled={isCreating}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold shadow-lg shadow-purple-600/25 transition-all cursor-pointer disabled:opacity-50"
-          >
-            {isCreating ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Plus className="w-4 h-4" />
-            )}
-            <span>Создать сценарий</span>
-          </button>
+          <div className="flex items-center gap-2.5">
+            <button
+              onClick={() => setIsAiModalOpen(true)}
+              className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 border border-purple-500/30 text-xs font-semibold shadow-lg shadow-purple-500/10 transition-all cursor-pointer"
+            >
+              <Sparkles className="w-4 h-4 text-purple-400" />
+              <span>Создать с AI</span>
+            </button>
+
+            <button
+              onClick={handleCreate}
+              disabled={isCreating}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold shadow-lg shadow-purple-600/25 transition-all cursor-pointer disabled:opacity-50"
+            >
+              {isCreating ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Plus className="w-4 h-4" />
+              )}
+              <span>Создать сценарий</span>
+            </button>
+          </div>
         </header>
 
         {/* Content */}
@@ -191,6 +203,16 @@ export default function WorkflowsPage() {
           )}
         </div>
       </main>
+
+      {/* Модальное окно создания сценария с AI */}
+      <AiGeneratorModal
+        isOpen={isAiModalOpen}
+        onClose={() => setIsAiModalOpen(false)}
+        onCreateWorkflow={(created) => {
+          queryClient.invalidateQueries({ queryKey: ['workflows'] });
+          router.push(`/workflows/${created.id}`);
+        }}
+      />
     </div>
   );
 }

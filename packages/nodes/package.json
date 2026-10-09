@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@neuroflow/shared": "workspace:*",
+    "@neuroflow/database": "workspace:*",
     "zod": "^3.24.2"
   },
   "devDependencies": {

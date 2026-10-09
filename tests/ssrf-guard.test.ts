@@ -33,4 +33,19 @@ describe('SSRF Protection Guard', () => {
     const url = await validateUrlForSSRF('https://example.com/api/test');
     expect(url.hostname).toBe('example.com');
   });
+
+  it('должен блокировать альтернативные числовые/hex/octal представления IP', async () => {
+    // 2130706433 = 127.0.0.1
+    await expect(validateUrlForSSRF('http://2130706433/')).rejects.toThrow(SSRFError);
+    // 0x7f000001 = 127.0.0.1
+    await expect(validateUrlForSSRF('http://0x7f000001/')).rejects.toThrow(SSRFError);
+    // 0177.0.0.1 = 127.0.0.1 (octal)
+    await expect(validateUrlForSSRF('http://0177.0.0.1/')).rejects.toThrow(SSRFError);
+  });
+
+  it('должен разрешать обращение к локальному Ollama только при флаге allowLocalOllama', async () => {
+    await expect(validateUrlForSSRF('http://127.0.0.1:11434/api/generate')).rejects.toThrow(SSRFError);
+    const ollamaUrl = await validateUrlForSSRF('http://127.0.0.1:11434/api/generate', { allowLocalOllama: true });
+    expect(ollamaUrl.port).toBe('11434');
+  });
 });

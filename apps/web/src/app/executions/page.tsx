@@ -11,12 +11,18 @@ import {
   Loader2,
   X,
   FileCode,
+  Sparkles,
+  Shield,
+  Lightbulb,
 } from 'lucide-react';
 import { Sidebar } from '@/components/layout/sidebar';
 import { api } from '@/lib/api-client';
 
 export default function ExecutionsPage() {
   const [selectedExecutionId, setSelectedExecutionId] = useState<string | null>(null);
+  const [isDebugLoading, setIsDebugLoading] = useState(false);
+  const [debugAnalysis, setDebugAnalysis] = useState<any | null>(null);
+  const [debugError, setDebugError] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['executions'],
@@ -30,6 +36,20 @@ export default function ExecutionsPage() {
   });
 
   const executionsList = data?.executions || [];
+
+  const handleDebugExecution = async (id: string) => {
+    setIsDebugLoading(true);
+    setDebugError(null);
+    setDebugAnalysis(null);
+    try {
+      const res = await api.debugExecution({ executionId: id });
+      setDebugAnalysis(res);
+    } catch (err: any) {
+      setDebugError(err.message || 'Ошибка запуска AI отладчика');
+    } finally {
+      setIsDebugLoading(false);
+    }
+  };
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-[#090A0F]">
@@ -173,12 +193,99 @@ export default function ExecutionsPage() {
                       </div>
                     </div>
 
-                    {details.error && (
-                      <div className="p-3 rounded-xl bg-rose-950/20 border border-rose-500/30">
-                        <div className="text-xs font-semibold text-rose-400 mb-1">Ошибка:</div>
-                        <pre className="text-[11px] font-mono text-rose-300 whitespace-pre-wrap">
-                          {details.error}
-                        </pre>
+                    {/* Блок ошибки и AI Debugger */}
+                    {(details.error || details.status === 'failed') && (
+                      <div className="space-y-2.5">
+                        {details.error && (
+                          <div className="p-3 rounded-xl bg-rose-950/20 border border-rose-500/30">
+                            <div className="text-xs font-semibold text-rose-400 mb-1">Ошибка выполнения:</div>
+                            <pre className="text-[11px] font-mono text-rose-300 whitespace-pre-wrap">
+                              {details.error}
+                            </pre>
+                          </div>
+                        )}
+
+                        {/* Кнопка запуска AI Debugger */}
+                        <button
+                          onClick={() => handleDebugExecution(details.id)}
+                          disabled={isDebugLoading}
+                          className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/40 text-purple-300 text-xs font-semibold transition-all disabled:opacity-50 cursor-pointer"
+                        >
+                          {isDebugLoading ? (
+                            <>
+                              <Loader2 className="w-3.5 h-3.5 animate-spin text-purple-400" />
+                              <span>Анализирую причину сбоя...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+                              <span>Объяснить ошибку с помощью AI</span>
+                            </>
+                          )}
+                        </button>
+
+                        {/* Ошибка работы дебаггера */}
+                        {debugError && (
+                          <div className="p-2.5 rounded-lg bg-rose-950/20 border border-rose-500/30 text-[11px] text-rose-300">
+                            {debugError}
+                          </div>
+                        )}
+
+                        {/* Результат AI анализа */}
+                        {debugAnalysis && (
+                          <div className="p-3.5 rounded-xl bg-gradient-to-br from-purple-900/30 to-indigo-900/20 border border-purple-500/30 space-y-2.5">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-semibold text-purple-200 flex items-center gap-1.5">
+                                <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+                                Диагностика AI Debugger
+                              </span>
+                              <span className="text-[10px] text-emerald-400 flex items-center gap-1">
+                                <Shield className="w-3 h-3" /> Секреты скрыты
+                              </span>
+                            </div>
+
+                            {debugAnalysis.rootCause && (
+                              <div>
+                                <span className="text-[11px] font-medium text-slate-300 block mb-0.5">
+                                  Первопричина сбоя:
+                                </span>
+                                <p className="text-xs text-slate-200 bg-[#12141F]/80 p-2.5 rounded-lg border border-white/5 leading-relaxed">
+                                  {debugAnalysis.rootCause}
+                                </p>
+                              </div>
+                            )}
+
+                            {debugAnalysis.recommendations && debugAnalysis.recommendations.length > 0 && (
+                              <div>
+                                <span className="text-[11px] font-medium text-slate-300 block mb-1 flex items-center gap-1">
+                                  <Lightbulb className="w-3 h-3 text-amber-400" /> Рекомендации по исправлению:
+                                </span>
+                                <ul className="space-y-1">
+                                  {debugAnalysis.recommendations.map((rec: string, i: number) => (
+                                    <li
+                                      key={i}
+                                      className="text-[11px] text-slate-300 bg-[#12141F]/60 p-2 rounded-lg border border-white/5 flex items-start gap-1.5"
+                                    >
+                                      <span className="text-purple-400 font-bold">•</span>
+                                      <span>{rec}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+
+                            {debugAnalysis.suggestedNodePatch && (
+                              <div>
+                                <span className="text-[11px] font-medium text-slate-300 block mb-1">
+                                  Предлагаемые параметры узла:
+                                </span>
+                                <pre className="text-[10px] font-mono text-cyan-300 bg-[#12141F] p-2 rounded-lg border border-white/5 overflow-x-auto max-h-36">
+                                  {JSON.stringify(debugAnalysis.suggestedNodePatch, null, 2)}
+                                </pre>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     )}
 

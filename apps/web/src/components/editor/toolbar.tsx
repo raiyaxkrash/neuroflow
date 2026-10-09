@@ -15,8 +15,10 @@ import {
 import Link from 'next/link';
 import { useWorkflowStore } from '@/store/workflow-store';
 import { api } from '@/lib/api-client';
+import { AiGeneratorModal } from './ai-generator-modal';
 
 export function EditorToolbar() {
+  const [isAiModalOpen, setIsAiModalOpen] = React.useState(false);
   const workflowId = useWorkflowStore((s) => s.workflowId);
   const workflowName = useWorkflowStore((s) => s.workflowName);
   const workflowVersion = useWorkflowStore((s) => s.workflowVersion);
@@ -30,6 +32,7 @@ export function EditorToolbar() {
   const future = useWorkflowStore((s) => s.future);
   const nodes = useWorkflowStore((s) => s.nodes);
   const edges = useWorkflowStore((s) => s.edges);
+  const setGraph = useWorkflowStore((s) => s.setGraph);
   const setIsSaving = useWorkflowStore((s) => s.setIsSaving);
   const setIsExecuting = useWorkflowStore((s) => s.setIsExecuting);
   const setNodeExecutionState = useWorkflowStore((s) => s.setNodeExecutionState);
@@ -197,6 +200,16 @@ export function EditorToolbar() {
           </button>
         </div>
 
+        {/* AI Генератор воркфлоу */}
+        <button
+          onClick={() => setIsAiModalOpen(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-500/10 border border-purple-500/30 text-purple-300 hover:bg-purple-500/20 text-xs font-medium transition-colors cursor-pointer"
+          title="Сгенерировать воркфлоу с помощью ИИ"
+        >
+          <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+          <span>AI Генератор</span>
+        </button>
+
         {/* Кнопка сохранения */}
         <button
           onClick={handleSave}
@@ -226,6 +239,34 @@ export function EditorToolbar() {
           )}
         </button>
       </div>
+
+      {/* Модальное окно генератора сценариев */}
+      <AiGeneratorModal
+        isOpen={isAiModalOpen}
+        onClose={() => setIsAiModalOpen(false)}
+        onApplyGraph={(graph, name) => {
+          if (name) setWorkflowName(name);
+          const newNodes = (graph.nodes || []).map((n: any) => ({
+            id: n.id,
+            type: 'custom',
+            position: n.position || { x: 150, y: 150 },
+            data: {
+              ...n.data,
+              type: n.type,
+            },
+          }));
+          const newEdges = (graph.edges || []).map((e: any) => ({
+            id: e.id,
+            source: e.source,
+            target: e.target,
+            sourceHandle: e.sourceHandle || null,
+            targetHandle: e.targetHandle || null,
+            type: 'smoothstep',
+            animated: false,
+          }));
+          setGraph(newNodes, newEdges);
+        }}
+      />
     </header>
   );
 }

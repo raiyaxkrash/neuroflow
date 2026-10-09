@@ -72,12 +72,30 @@ const availableNodes: NodeItem[] = [
     icon: <CheckCircle2 className="w-4 h-4 text-emerald-400" />,
     color: '#10B981',
   },
+  {
+    type: 'ai-model',
+    name: 'AI Model',
+    description: 'Интеллектуальная обработка и LLM (OpenAI, Gemini, Anthropic, Ollama, REST)',
+    category: 'ai',
+    icon: <Sparkles className="w-4 h-4 text-pink-400" />,
+    color: '#EC4899',
+  },
+];
+
+const categories = [
+  { id: 'all', label: 'Все' },
+  { id: 'ai', label: 'AI' },
+  { id: 'trigger', label: 'Триггеры' },
+  { id: 'action', label: 'Действия' },
+  { id: 'logic', label: 'Логика' },
+  { id: 'data', label: 'Данные' },
 ];
 
 export function NodePalette() {
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const addNode = useWorkflowStore((s) => s.addNode);
+  const setActiveInspectorTab = useWorkflowStore((s) => s.setActiveInspectorTab);
 
   const filteredNodes = availableNodes.filter((n) => {
     const matchesSearch =
@@ -94,8 +112,8 @@ export function NodePalette() {
 
   return (
     <aside className="w-72 border-r border-white/10 bg-[#12141F] flex flex-col h-full select-none z-10">
-      <div className="p-4 border-b border-white/5">
-        <div className="text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+      <div className="p-4 border-b border-white/5 space-y-3">
+        <div className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
           Библиотека узлов
         </div>
         <div className="relative">
@@ -107,6 +125,23 @@ export function NodePalette() {
             onChange={(e) => setSearch(e.target.value)}
             className="w-full bg-[#181B2B] text-xs text-slate-200 pl-8 pr-3 py-1.5 rounded-lg border border-white/5 focus:border-purple-500/50 outline-none transition-colors"
           />
+        </div>
+
+        {/* Фильтры категорий */}
+        <div className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-none">
+          {categories.map((cat) => (
+            <button
+              key={cat.id}
+              onClick={() => setSelectedCategory(cat.id)}
+              className={`px-2 py-0.5 rounded-md text-[10px] font-medium whitespace-nowrap transition-colors ${
+                selectedCategory === cat.id
+                  ? 'bg-purple-600 text-white'
+                  : 'bg-white/5 text-slate-400 hover:bg-white/10 hover:text-slate-200'
+              }`}
+            >
+              {cat.label}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -138,14 +173,17 @@ export function NodePalette() {
         ))}
       </div>
 
-      {/* Тизер будущей интеграции AI Copilot */}
-      <div className="p-3 m-3 rounded-xl bg-purple-950/20 border border-purple-500/20">
-        <div className="flex items-center gap-1.5 text-xs font-medium text-purple-300 mb-1">
+      {/* AI Copilot активатор */}
+      <div
+        onClick={() => setActiveInspectorTab('copilot')}
+        className="p-3 m-3 rounded-xl bg-purple-950/20 hover:bg-purple-950/40 border border-purple-500/20 hover:border-purple-500/40 cursor-pointer transition-all"
+      >
+        <div className="flex items-center gap-1.5 text-xs font-semibold text-purple-300 mb-1">
           <Sparkles className="w-3.5 h-3.5 text-purple-400" />
           <span>AI Workflow Copilot</span>
         </div>
         <p className="text-[10px] text-slate-400 leading-normal">
-          Генерация и оптимизация сценариев по текстовому описанию (Фаза 2).
+          Нажмите, чтобы открыть чат с ассистентом для модификации и объяснения графа.
         </p>
       </div>
     </aside>

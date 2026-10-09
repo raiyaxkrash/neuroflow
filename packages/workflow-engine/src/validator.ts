@@ -13,9 +13,17 @@ export interface ValidationResult {
 
 export class WorkflowValidator {
   /**
+   * Экземплярный метод валидации воркфлоу или графа
+   */
+  public validate(graphOrWorkflow: WorkflowGraph | { graph: WorkflowGraph }): ValidationResult {
+    return WorkflowValidator.validate(graphOrWorkflow);
+  }
+
+  /**
    * Полная валидация структуры графа
    */
-  public static validate(graph: WorkflowGraph): ValidationResult {
+  public static validate(graphOrWorkflow: WorkflowGraph | { graph: WorkflowGraph }): ValidationResult {
+    const graph: WorkflowGraph = (graphOrWorkflow as any)?.graph ? (graphOrWorkflow as any).graph : graphOrWorkflow;
     const errors: string[] = [];
     const warnings: string[] = [];
     const registry = getNodeRegistry();

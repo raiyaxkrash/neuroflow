@@ -76,13 +76,52 @@ export class HttpRequestNode extends BaseNodeDef {
 
     const startTime = Date.now();
     try {
-      const response = await fetch(validatedUrl.toString(), {
-        method,
-        headers,
-        body: bodyData,
-        signal: controller.signal,
-        redirect: 'follow',
-      });
+      let currentUrl = validatedUrl.toString();
+      let response: Response | null = null;
+      let redirectCount = 0;
+      const maxRedirects = 5;
+
+      while (redirectCount <= maxRedirects) {
+        response = await fetch(currentUrl, {
+          method,
+          headers,
+          body: bodyData,
+          signal: controller.signal,
+          redirect: 'manual', // Ручное следование с проверкой каждого URL
+        });
+
+        // Проверка на статус редиректа (301, 302, 303, 307, 308)
+        if ([301, 302, 303, 307, 308].includes(response.status)) {
+          const locationHeader = response.headers.get('location');
+          if (!locationHeader) {
+            break;
+          }
+
+          redirectCount++;
+          if (redirectCount > maxRedirects) {
+            throw new Error(`Превышено максимальное число перенаправлений (${maxRedirects})`);
+          }
+
+          // Резолвим относительные или абсолютные URL
+          const resolvedRedirectUrl = new URL(locationHeader, currentUrl).toString();
+
+          // КРИТИЧЕСКИ ВАЖНО: валидируем целевой URL редиректа на SSRF!
+          const validatedRedirect = await validateUrlForSSRF(resolvedRedirectUrl);
+          currentUrl = validatedRedirect.toString();
+
+          // Для 303 или 302 метод может переключаться на GET без body
+          if (response.status === 303 || (response.status === 302 && method !== 'GET')) {
+            // switch to GET
+          }
+          continue;
+        }
+
+        break;
+      }
+
+      if (!response) {
+        throw new Error('Не удалось получить ответ сервера');
+      }
 
       const durationMs = Date.now() - startTime;
 
